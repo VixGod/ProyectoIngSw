@@ -3,9 +3,31 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Document</title>
+    <title>DeltaLogin</title>
+    <link rel="stylesheet" href="estilos.css">
 </head>
 <body>
-    
+    <header>
+        <img class="logo" src="Recursos-img/logo.png" alt="Logo">
+        <div>
+            <button onclick="window.open('https://edd.tecnm.mx/docentes/index.php', '_blank');">EDD</button>
+            <img src="Recursos-img/engranaje.png" alt="engranaje" class="engranaje">
+        </div>
+    </header>
+    <section>
+        <article>
+            <h2>Bienvenido a</h2>
+            <h1>DELTA</h1>
+            <form action="procesar_login.php" method="POST">
+                <label for="username">Usuario:</label> <br>
+                <input type="text" id="username" name="username" required>
+                <BR></BR>
+                <label for="password">Contraseña:</label> <br>
+                <input type="password" id="password" name="password" required>
+                <BR></BR>
+                <button type="submit">Iniciar Sesión</button>
+            </form>
+        </article>
+    </section>
 </body>
 </html>
