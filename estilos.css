@@ -1,0 +1,62 @@
+:root{
+    --azul:#1b396a;
+}
+
+body{
+    margin:0;
+}
+header{
+    background: white;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.logo{
+    height: 120px;
+}
+header button{
+    background: var(--azul);
+    color: white;
+    font-size: 17px;
+    padding: 10px 40px;
+    border-radius: 20px;
+    margin-right: 20px;
+    box-shadow: #1b396a 2px 2px 5px;
+}
+header div{
+    display: flex;
+    align-items: center;
+}
+.engranaje{
+    height: 70px;
+    margin-right: 20px;
+}
+section{
+    background: var(--azul);
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    padding: 100px 0px;
+}
+article{
+    background: white;
+    margin: 0px 530px;
+    padding: 40px;
+}
+h2{
+    text-align: center;
+    margin: 0%;
+    font-weight: 400;
+}
+h1{
+    text-align: center;
+}
+section button{
+    display: flex;
+    padding: 8px 20px;
+    margin: auto;
+    background: var(--azul);
+    color: white;
+    font-size: 15px;
+}
+label{
+    font-size: 20px;
+}
