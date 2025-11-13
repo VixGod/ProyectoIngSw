@@ -1,0 +1,465 @@
+/* ======================================================= */
+/* === 1. RESET BÁSICO Y LAYOUT GENERAL (Para todas las páginas) === */
+/* ======================================================= */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Inter, sans-serif;
+    background-color: white; 
+    min-height: 100vh;
+    overflow-x: hidden; 
+}
+
+/* Clase para ocultar elementos (usada en el menú desplegable y pestañas de contenido) */
+.hidden {
+    display: none !important;
+}
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* === HEADER (Barra Superior Azul) === */
+.header {
+    background: #1B396A;
+    color: white;
+    height: 100px; 
+    width: 100%;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    padding: 0 40px;
+    box-sizing: border-box;
+    position: relative; 
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+}
+
+.logo-img {
+    width: 100px; 
+    height: auto;
+    margin-right: 15px;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-title-text {
+    font-size: 36px;
+    font-weight: 800;
+}
+
+.header-subtitle-text {
+    font-size: 16px;
+}
+
+/* === USER INFO Y MENÚ DESPLEGABLE === */
+.user-info {
+    display: flex;
+    align-items: center;
+    position: relative; 
+}
+
+.bienvenida-norma-rebeca {
+    font-size: 24px;
+    font-weight: 800;
+    margin-right: 20px;
+}
+
+.notification-icon {
+    width: 30px;
+    height: 30px;
+    margin-right: 15px;
+
+}
+
+.profile-container {
+    cursor: pointer;
+}
+
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid white; 
+    padding: 5px;
+}
+
+/* Estilos del Menú Desplegable */
+.profile-menu {
+    position: absolute;
+    top: 90px;
+    right: 0; 
+    background: white;
+    border: 1px solid #ccc;
+    border-radius: 8px;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+    width: 250px;
+    padding: 10px;
+    z-index: 1000;
+}
+
+.close-btn {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: none;
+    border: none;
+    cursor: pointer;
+    padding: 0;
+}
+
+.menu-item {
+    display: flex;
+    align-items: center;
+    padding: 12px 10px;
+    cursor: pointer;
+    font-size: 18px;
+    font-weight: 600;
+    color: #1B396A;
+    transition: background-color 0.2s;
+}
+
+.menu-item:hover {
+    background-color: #f0f0f0;
+}
+
+.menu-icon {
+    font-size: 25px; 
+    width: 25px;
+    height: 25px;
+    margin-right: 15px;
+    text-align: center;
+}
+
+/* === PAGE CONTENT y SIDEBAR === */
+.page-content {
+    flex-grow: 1; 
+    display: flex;
+    width: 100%;
+}
+
+.sidebar {
+    width: 120px; 
+    background: white;
+    border-right: 1px solid #ccc; 
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.nav-item {
+    width: 100%;
+    text-align: center;
+    padding: 15px 0;
+    text-decoration: none;
+    color: black;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+    background-color: transparent; 
+    transition: background-color 0.2s;
+}
+
+/* Estado ACTIVO del menú lateral */
+.nav-item.active {
+    background: rgba(217, 217, 217, 0.5); 
+}
+
+.nav-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 5px;
+}
+
+.nav-footer {
+    margin-top: auto; 
+    padding: 20px 0;
+}
+
+/* === CONTENIDO PRINCIPAL === */
+.content-area {
+    flex-grow: 1; 
+    background: white; 
+    padding: 20px 40px;
+}
+
+
+/* ================================================== */
+/* === 2. ESTILOS ESPECÍFICOS: SOLICITUDES/COMPLETADOS === */
+/* ================================================== */
+
+/* Sub-navegación (Pestañas) */
+.sub-nav {
+    display: flex;
+    align-items: flex-end; 
+    border-bottom: 2px solid #ccc; 
+    margin-bottom: 30px;
+    position: relative; 
+    margin-bottom: -2px;
+}
+
+.solicitudes-tab, .completados-tab {
+    padding: 0 15px 10px 15px;
+    margin-right: 20px;
+    position: relative;
+    cursor: pointer;
+    margin-bottom: -2px; 
+}
+
+/* Estados de las pestañas */
+.solicitudes-span, .completados-span {
+    font-weight: 800;
+    font-size: 24px; 
+    color: #1B396A;
+    opacity: 0.6; 
+    transition: opacity 0.2s, font-size 0.2s;
+}
+
+
+
+/* Pestaña ACTIVA */
+.solicitudes-tab.active-tab .solicitudes-span,
+.completados-tab.active-tab .completados-span {
+    font-size: 26px; 
+    opacity: 1;
+}
+
+.active-line {
+    position: absolute;
+    bottom: 0; 
+    left: 0;
+    width: 100%;
+    height: 5px;
+    background: #1B396A;
+}
+
+/* Filas de documentos (para Solicitudes/Completados) */
+.document-list-container {
+    background: rgba(27, 57, 106, 0.1); 
+    padding: 20px;
+    border-radius: 5px;
+}
+
+.document-row {
+    background: rgba(27, 57, 106, 0.60); 
+    color: white;
+    margin-bottom: 15px;
+    padding: 15px 30px;
+    height: 100px;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    border-radius: 5px;
+}
+
+.document-details {
+    display: flex;
+    gap: 300px; 
+    align-items: center;
+}
+
+.documento-text, .document-date, .documento-5 {
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.time-icon, .complete-icon {
+    width: 50px;
+    height: 50px;
+    filter: invert(100%) sepia(0%) saturate(7469%) hue-rotate(170deg) brightness(108%) contrast(107%); 
+}
+
+
+/* ================================================== */
+/* === 3. ESTILOS ESPECÍFICOS: CATÁLOGO DE DOCUMENTOS === */
+/* ================================================== */
+
+.content-area.catalog-view {
+    display: flex;
+    flex-direction: column;
+    align-items: center; 
+}
+
+.catalog-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-bottom: 30px;
+    text-align: center;
+    width: 100%;
+}
+
+.catalog-container {
+    background: rgba(27, 57, 106, 0.1); 
+    padding: 30px;
+    border-radius: 5px;
+    width: 80%; 
+    max-width: 1200px; 
+}
+
+.catalog-row {
+    background: rgba(27, 57, 106, 0.60); 
+    color: white;
+    margin-bottom: 20px;
+    padding: 15px 30px;
+    height: 80px; 
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    border-radius: 5px;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.2); 
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.obtain-text {
+    font-size: 20px;
+    font-weight: 800;
+    margin-right: 15px;
+}
+
+.action-icon {
+    width: 40px;
+    height: 40px;
+    filter: invert(100%) sepia(0%) saturate(7469%) hue-rotate(170deg) brightness(108%) contrast(107%); 
+}
+
+.menu-icon {
+    width: 25px;
+    height: 25px;
+    margin-right: 15px;
+    text-align: center;
+}
+
+/* ======================================= */
+/* === 4. ESTILOS ESPECÍFICOS: MI PERFIL === */
+/* ======================================= */
+
+.page-title {
+    /* Título principal "Mi Perfil" */
+    font-size: 32px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-bottom: 20px;
+    text-align: center;
+}
+
+.profile-view {
+    background: white; 
+    padding: 30px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.profile-card {
+    background: rgba(27, 57, 106, 0.1); 
+    padding: 30px;
+    border-radius: 5px;
+    width: 90%;
+    max-width: 1200px;
+    display: flex;
+    gap: 50px; 
+    align-items: flex-start;
+}
+
+/* --- Área de Foto (Izquierda) --- */
+.profile-photo-area {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 250px; 
+}
+
+.photo-frame {
+    /* Este es el marco BLANCO exterior con el borde ligero */
+    width: 200px; 
+    height: 200px;
+    border: 1px solid #ccc; 
+    border-radius: 50%;
+    padding: 10px; 
+    background: white;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    margin-bottom: 10px;
+    box-sizing: border-box; 
+}
+
+
+.avatar-inner-circle {
+    width: 100%; 
+    height: 100%;
+    border-radius: 25%;
+    display: flex; 
+    justify-content: center;
+    align-items: center;
+    overflow: hidden; 
+}
+
+.profile-avatar {
+
+    width: 80%; 
+    height: 80%;
+    object-fit: contain; 
+ 
+}
+
+.profile-name-footer {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-top: 5px;
+}
+
+
+.personal-info-area {
+    flex-grow: 1;
+}
+
+.info-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-bottom: 30px;
+    text-transform: uppercase;
+}
+
+.info-group {
+    margin-bottom: 25px;
+}
+
+.info-label {
+    display: block; 
+    font-size: 18px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-bottom: 5px;
+}
+
+.info-value {
+    display: block;
+    font-size: 20px;
+    font-weight: bold;
+    color: #1B396A; 
+    text-transform: uppercase;
+}
