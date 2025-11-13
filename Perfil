@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELTA - Mi Perfil</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Icono de Notificación" />
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Icono de Perfil" />
+                </div>
+
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn">
+                        <span style="font-size: 20px; color: #333;">&times;</span>
+                    </button>
+                    
+                    <div class="menu-item" data-href="perfil.html">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 31.png" alt="Perfil" />
+                        <span>Mi Perfil</span>
+                    </div>
+                    
+                    <div class="menu-item">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 32.png" alt="Soporte" />
+                        <span>Ayuda y Soporte</span>
+                    </div>
+                    
+                    <div class="menu-item logout">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 33.png" alt="Cerrar Sesión" />
+                        <span>Cerrar Sesión</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item" data-href="inicio.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 4.png" alt="Icono Inicio" />
+                    <span class="nav-text">Inicio</span>
+                </a>
+                <a href="#" class="nav-item" data-href="documentos.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 5.png" alt="Icono Documentos" />
+                    <span class="nav-text">Documentos</span>
+                </a>
+                <a href="#" class="nav-item nav-footer">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 8.png" alt="Icono Footer" />
+                </a>
+            </nav>
+
+            <main class="content-area profile-view">
+                <h1 class="page-title">Mi Perfil</h1>
+
+                <div class="profile-card">
+                    
+                    <div class="profile-photo-area">
+                        <div class="photo-frame">
+                            <div class="avatar-inner-circle">
+                                <img class="profile-avatar" src="/aaa/Recursos-img/image 51.png" alt="Avatar" />
+                            </div>
+                        </div>
+                        <span class="profile-name-footer">NORMA REBECA</span>
+                    </div>
+
+                    <div class="personal-info-area">
+                        <h2 class="info-title">Mi información personal</h2>
+
+                        <div class="info-group">
+                            <span class="info-label">Nombre Completo</span>
+                            <span class="info-value primary-color">NORMA REBECA GODOY CASTRO</span>
+                        </div>
+                        
+                        <div class="info-group">
+                            <span class="info-label">Correo Electrónico</span>
+                            <span class="info-value primary-color">norma_gc@cullacan.tecnm.mx</span>
+                        </div>
+                        
+                        <div class="info-group">
+                            <span class="info-label">Departamento:</span>
+                            <span class="info-value primary-color">SISTEMAS COMPUTACIONALES</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+</body>
+</html>
