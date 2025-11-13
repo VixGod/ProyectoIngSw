@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELTA - Catálogo de Documentos</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Icono de Notificación" /> 
+                
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Icono de Perfil" />
+                </div>
+
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn">
+                        <span style="font-size: 20px; color: #333;">&times;</span>
+                    </button>
+                    
+                    <div class="menu-item" data-href="perfil.html">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 31.png" alt="Mi Perfil" />
+                        <span>Mi Perfil</span>
+                    </div>
+                    
+                    <div class="menu-item">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 32.png" alt="Ayuda y Soporte" />
+                        <span>Ayuda y Soporte</span>
+                    </div>
+                    
+                    <div class="menu-item logout">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 33.png" alt="Cerrar Sesiónl" />
+                        <span>Cerrar Sesión</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item active" data-href="inicio.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 4.png" alt="Icono Inicio" />
+                    <span class="nav-text">Inicio</span>
+                </a>
+                <a href="#" class="nav-item" data-href="documentos.html"> 
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 5.png" alt="Icono Documentos" />
+                    <span class="nav-text">Documentos</span>
+                </a>
+                <a href="#" class="nav-item nav-footer">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 8.png" alt="Icono Footer" />
+                </a>
+            </nav>
+
+            <main class="content-area catalog-view">
+                <h1 class="catalog-title">Catálogo de documentos</h1>
+                <div class="catalog-container">
+                    
+                    <div class="catalog-row">
+                        <span class="documento-text">Documento 1</span>
+                        <div class="action-buttons">
+                            <span class="obtain-text">Obtener</span>
+                            <img class="action-icon" src="/aaa/Recursos-img/image 36.png" alt="Icono de Editar Documento" />
+                        </div>
+                    </div>
+
+                    <div class="catalog-row">
+                        <span class="documento-text">Documento 2</span>
+                        <div class="action-buttons">
+                            <span class="obtain-text">Obtener</span>
+                            <img class="action-icon" src="/aaa/Recursos-img/image 36.png" alt="Icono de Editar Documento" />
+                        </div>
+                    </div>
+
+                    <div class="catalog-row">
+                        <span class="documento-text">Documento 3</span>
+                        <div class="action-buttons">
+                            <span class="obtain-text">Obtener</span>
+                            <img class="action-icon" src="/aaa/Recursos-img/image 36.png" alt="Icono de Editar Documento" />
+                        </div>
+                    </div>
+
+                    <div class="catalog-row">
+                        <span class="documento-text">Documento 4</span>
+                        <div class="action-buttons">
+                            <span class="obtain-text">Obtener</span>
+                            <img class="action-icon" src="/aaa/Recursos-img/image 36.png" alt="Icono de Editar Documento" />
+                        </div>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
