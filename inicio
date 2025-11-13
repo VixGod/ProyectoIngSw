@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELTA - Inicio</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Icono de Notificación" />
+                
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Icono de Perfil" />
+                </div>
+
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn">
+                        <span style="font-size: 20px; color: #333;">&times;</span>
+                    </button>
+                    
+                    <div class="menu-item" data-href="perfil.html">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 31.png" alt="Mi Perfil" />
+                        <span>Mi Perfil</span>
+                    </div>
+                    
+                    <div class="menu-item">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 32.png" alt="Ayuda y Soporte" />
+                        <span>Ayuda y Soporte</span>
+                    </div>
+                    
+                    <div class="menu-item logout">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 33.png" alt="Cerrar Sesiónl" />
+                        <span>Cerrar Sesión</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item" data-href="inicio.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 4.png" alt="Icono Inicio" />
+                    <span class="nav-text">Inicio</span>
+                </a>
+
+                <a href="#" class="nav-item active" data-href="documentos.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 5.png" alt="Icono Documentos" />
+                    <span class="nav-text">Documentos</span>
+                </a>
+                
+                <a href="#" class="nav-item nav-footer">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 8.png" alt="Icono Footer" />
+                </a>
+            </nav>
+
+            <main class="content-area">
+                <div class="sub-nav">
+                    <div class="solicitudes-tab active-tab" data-target="solicitudes-content">
+                        <span class="solicitudes-span">Solicitudes</span>
+                        <div class="active-line"></div>
+                    </div>
+                    <div class="completados-tab" data-target="completados-content">
+                        <span class="completados-span">Completados</span>
+                    </div>
+                </div>
+
+                <div class="tab-content-wrapper"> 
+                    
+                    <div class="document-list-container" id="solicitudes-content">
+                        <div class="document-row">
+                            <div class="document-details">
+                                <span class="documento-5">Documento 5</span>
+                                <span class="document-date">30-10-2025</span>
+                            </div>
+                            <img class="time-icon" src="/aaa/Recursos-img/image 20.png" alt="Icono de reloj" />
+                        </div>
+                        <div class="document-row secondary-row"></div>
+                        <div class="document-row secondary-row"></div>
+                        <div class="document-row secondary-row"></div>
+                    </div>
+
+                    <div class="document-list-container hidden" id="completados-content">
+                        <div class="document-row">
+                            <div class="document-details">
+                                <span class="documento-text">Documento 1</span>
+                                <span class="document-date">03-10-2025</span>
+                            </div>
+                            <img class="complete-icon" src="/aaa/Recursos-img/image 21.png" alt="Icono de Documento Completado" />
+                        </div>
+                        <div class="document-row">
+                            <div class="document-details">
+                                <span class="documento-text">Documento 2</span>
+                                <span class="document-date">05-10-2025</span>
+                            </div>
+                            <img class="complete-icon" src="/aaa/Recursos-img/image 21.png" alt="Icono de Documento Completado" />
+                        </div>
+                        <div class="document-row">
+                            <div class="document-details">
+                                <span class="documento-text">Documento 3</span>
+                                <span class="document-date">06-10-2025</span>
+                            </div>
+                            <img class="complete-icon" src="/aaa/Recursos-img/image 21.png" alt="Icono de Documento Completado" />
+                        </div>
+                        <div class="document-row">
+                            <div class="document-details">
+                                <span class="documento-text">Documento 4</span>
+                                <span class="document-date">09-10-2025</span>
+                            </div>
+                            <img class="complete-icon" src="/aaa/Recursos-img/image 21.png" alt="Icono de Documento Completado" />
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>
