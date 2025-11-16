@@ -1,0 +1,11 @@
+# 1. IGNORAR LA CARPETA DE NODE.JS
+# Esto es lo más importante. Evita subir miles de archivos.
+/backend/node_modules/
+
+# 2. IGNORAR ARCHIVOS DE CONTRASEÑAS Y SECRETOS
+# Este archivo .env es donde pondrás la contraseña de SQL Server.
+/backend/.env
+
+# 3. Ignorar archivos basura del sistema
+.DS_Store
+Thumbs.db
