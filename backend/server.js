@@ -1,51 +1,77 @@
-// 1. Importar los paquetes
 const express = require('express');
 const sql = require('mssql');
 const cors = require('cors');
-
-// ¡IMPORTANTE! Esto carga las variables del archivo .env
 require('dotenv').config();
 
-// 2. Crear la aplicación del servidor
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// 3. Configurar la conexión a la Base de Datos
-// El código lee las variables desde 'process.env' (que fue llenado por dotenv)
 const dbConfig = {
-  user: process.env.DB_USER,
-  password: process.env.DB_PASSWORD,
-  server: process.env.DB_SERVER,
-  database: process.env.DB_DATABASE,
-  options: {
-    encrypt: false, // Poner en true si usas Azure
-    trustServerCertificate: true // Poner en true para conexiones locales
-  }
+    user: process.env.DB_USER,
+    password: process.env.DB_PASSWORD,
+    server: process.env.DB_SERVER,
+    database: process.env.DB_DATABASE,
+    options: {
+        encrypt: false,
+        trustServerCertificate: true
+    }
 };
 
-// 4. Función de prueba para verificar la conexión
-// (Esta función es solo para probar que todo funciona)
+// Prueba de conexión node server.js
 async function testConnection() {
-  try {
-    // Intenta conectar
-    let pool = await sql.connect(dbConfig);
-    console.log("✅ ¡Conexión a SQL Server exitosa!");
-
-    // Opcional: Haz una consulta simple
-    const result = await pool.request().query('SELECT 1 AS test');
-    console.log('Resultado de la consulta de prueba:', result.recordset);
-
-  } catch (err) {
-    console.error("❌ ERROR al conectar a la base de datos: ", err);
-  }
+    try {
+        await sql.connect(dbConfig);
+        console.log("✅ ¡Conexión a SQL Server exitosa!");
+    } catch (err) {
+        console.error("❌ ERROR de conexión:", err);
+    }
 }
 
-// 5. Iniciar el servidor
+// ==========================================
+//               RUTA DE LOGIN
+// ==========================================
+app.post('/login', async (req, res) => {
+    const { rfc, password } = req.body;
+
+    if (!rfc || !password) {
+        return res.status(400).json({ success: false, message: 'Faltan datos.' });
+    }
+
+    try {
+        let pool = await sql.connect(dbConfig);
+
+        // Consulta SQL exacta para buscar coincidencias de RFC (el usuario) y Password
+        const result = await pool.request()
+            .input('rfc', sql.NVarChar, rfc)
+            .input('pass', sql.NVarChar, password)
+            .query('SELECT * FROM Docente WHERE RFCDocente = @rfc AND DocentePassword = @pass');
+
+        if (result.recordset.length > 0) {
+            // ¡Usuario encontrado!
+            const docente = result.recordset[0];
+            
+            // Quitamos la contraseña antes de enviarla al frontend por seguridad
+            delete docente.DocentePassword; 
+
+            res.json({
+                success: true,
+                message: 'Login exitoso',
+                docente: docente
+            });
+        } else {
+            // No se encontró coincidencia
+            res.status(401).json({ success: false, message: 'Usuario o contraseña incorrectos.' });
+        }
+
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: 'Error en el servidor' });
+    }
+});
+
 const port = 3000;
 app.listen(port, () => {
-  console.log(`Servidor corriendo en http://localhost:${port}`);
-  
-  // Ejecuta la prueba de conexión cuando el servidor inicia
-  testConnection();
+    console.log(`Servidor corriendo en http://localhost:${port}`);
+    testConnection();
 });

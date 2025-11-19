@@ -4,14 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeltaLogin</title>
-    <link rel="stylesheet" href="estilos.css">
+    <link rel="stylesheet" href="login.css">
 </head>
 <body>
     <header>
         <img class="logo" src="Recursos-img/logo.jpeg" alt="Logo">
         <div>
             <button onclick="window.open('https://edd.tecnm.mx/docentes/index.php', '_blank');">EDD</button>
-            <img src="../Recursos-img/engranaje.png" alt="engranaje" class="engranaje">
+            <img src="Recursos-img/engranaje.png" alt="engranaje" class="engranaje">
         </div>
     </header>
     <section>
@@ -19,7 +19,7 @@
             <h2>Bienvenido a</h2>
             <h1>DELTA</h1>
             <p>Por favor ingresa tus datos para obtener tus documentos.</p>
-            <form action="procesar_login.php" method="POST">
+            <form id="login-form">
                 <label for="username">Usuario:</label> <br>
                 <input type="text" id="username" name="username" value="" required>
                 <BR></BR>
@@ -27,9 +27,12 @@
                 <input type="password" id="password" name="password" required>
                 <BR></BR>
                 <button type="submit">Iniciar Sesión</button>
+                <p id="error-message" style="color: red; text-align: center; display: none;"></p>
             </form>
         </article>
         <article class="logofondo"><img src="Recursos-img/LOGO_TECNM.png" alt="Logo tecnm"></article>
     </section>
+
+    <script src="login.js"></script>
 </body>
 </html>
