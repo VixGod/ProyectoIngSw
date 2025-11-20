@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title-doc">DELTA - Documento</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Icono de Notificación" />
+                
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Icono de Perfil" />
+                </div>
+
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn">
+                        <span style="font-size: 20px; color: #333;">&times;</span>
+                    </button>
+                    
+                    <div class="menu-item" data-href="perfil.html">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 31.png" alt="Mi Perfil" />
+                        <span>Mi Perfil</span>
+                    </div>
+                    <div class="menu-item">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 32.png" alt="Ayuda y Soporte" />
+                        <span>Ayuda y Soporte</span>
+                    </div>
+                    <div class="menu-item logout">
+                        <img class="menu-icon" src="/aaa/Recursos-img/image 33.png" alt="Cerrar Sesiónl" />
+                        <span>Cerrar Sesión</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item" data-href="catalogo.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 4.png" alt="Icono Inicio" />
+                    <span class="nav-text">Inicio</span>
+                </a>
+
+                <a href="#" class="nav-item active" data-href="inicio.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 5.png" alt="Icono Documentos" />
+                    <span class="nav-text">Documentos</span>
+                </a>
+                
+                <a href="#" class="nav-item nav-footer">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 8.png" alt="Icono Footer" />
+                </a>
+            </nav>
+
+            <main class="content-area">
+                <div class="document-viewer-container">
+                    <div class="document-header">
+                        <a href="javascript:history.back()" class="back-button">
+                            <span style="font-size: 24px; margin-right: 5px;">&#8592;</span> 
+                            Volver a Documentos
+                        </a>
+                        
+                        <h2 class="document-title-viewer" id="document-title">Cargando documento...</h2>
+                        <div style="width: 50px;"></div> 
+                    </div>
+                    
+                    <div class="document-frame">
+                        </div>
+                </div>
+
+                <div class="download-button-container">
+                    <button class="download-button" id="download-doc-btn">
+                        <span style="font-size: 20px;">&#128229;</span>
+                        Descargar
+                    </button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const params = new URLSearchParams(window.location.search);
+            const docId = params.get('id');
+            const docName = decodeURIComponent(params.get('name') || 'Documento sin Nombre');
+            const docPath = decodeURIComponent(params.get('path') || '');
+
+            const documentTitleElement = document.getElementById('document-title');
+            const documentFrame = document.querySelector('.document-frame'); 
+            const downloadDocBtn = document.getElementById('download-doc-btn');
+            const pageTitleDoc = document.getElementById('page-title-doc');
+
+            documentTitleElement.textContent = docName;
+            pageTitleDoc.textContent = `DELTA - ${docName}`;
+
+            if (docPath) {
+                const isPdf = docPath.toLowerCase().endsWith('.pdf');
+
+                if (isPdf) {
+                    documentFrame.innerHTML = `
+                        <iframe 
+                            src="${docPath}" 
+                            width="100%" 
+                            height="100%" 
+                            style="border: none;"
+                        >
+                            Tu navegador no soporta la visualización de PDFs.
+                        </iframe>
+                    `;
+                } else {
+                    documentFrame.innerHTML = `
+                        <img 
+                            class="document-image" 
+                            src="${docPath}" 
+                            alt="Visualización del documento" 
+                        />
+                    `;
+                }
+
+                downloadDocBtn.onclick = () => {
+                    const a = document.createElement('a');
+                    a.href = docPath;
+                    a.download = docName.replace(/ /g, '_');
+                    document.body.appendChild(a);
+                    a.click();
+                    document.body.removeChild(a);
+                };
+            } else {
+                documentFrame.innerHTML = '<p style="color: #666; font-size: 20px;">No se encontró el archivo.</p>';
+                downloadDocBtn.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html>
