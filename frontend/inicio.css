@@ -463,3 +463,414 @@ body {
     color: #1B396A; 
     text-transform: uppercase;
 }
+
+/* ================================================== */
+/* === 5. ESTILOS ESPECÍFICOS: VISUALIZADOR DE DOCUMENTOS === */
+/* ================================================== */
+
+.document-viewer-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
+    background-color: #f8f9fa;
+    flex-grow: 1;
+    /* Ajustar altura restando header para evitar doble scroll si es posible */
+    min-height: calc(100vh - 100px); 
+}
+
+.document-header {
+    width: 100%;
+    max-width: 1000px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 20px;
+    padding: 10px 0;
+}
+
+.back-button {
+    background: none;
+    border: none;
+    font-size: 18px;
+    font-weight: bold;
+    cursor: pointer;
+    color: #1B396A;
+    display: flex;
+    align-items: center;
+    text-decoration: none;
+}
+
+/* Ajuste para flecha de texto o imagen */
+.back-button span {
+    font-size: 24px;
+    margin-right: 5px;
+}
+
+.back-button img {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+}
+
+.document-title-viewer {
+    font-size: 24px;
+    font-weight: 800;
+    color: #008000; /* Verde institucional o el color que prefieras */
+    text-align: center;
+    flex-grow: 1;
+    margin: 0;
+}
+
+.document-frame {
+    background-color: #fff;
+    border: 1px solid #ccc;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+    padding: 20px;
+    width: 90%;
+    max-width: 1000px;
+    height: 80vh; /* Altura fija relativa a la ventana */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    position: relative;
+    overflow: hidden; 
+}
+
+.document-image {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+/* Botón de descarga flotante */
+.download-button-container {
+    position: fixed;
+    bottom: 30px;
+    right: 40px;
+    z-index: 1000;
+}
+
+.download-button {
+    background-color: #1B396A;
+    color: white;
+    padding: 12px 20px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.download-button:hover {
+    background-color: #142a4f;
+}
+
+/* ======================================================== */
+/* === 6. ESTILOS ESPECÍFICOS: SOLICITUD DE DOCUMENTOS === */
+/* ======================================================== */
+
+.request-button {
+    background-color: #28a745; /* Verde éxito */
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.request-button:hover {
+    background-color: #218838; /* Verde más oscuro al pasar mouse */
+}
+
+.check-icon {
+    font-size: 20px;
+}
+
+/* ====================================================== */
+/* === CORRECCIÓN DE ESTILOS PARA LISTAS (Blanco y Alineado) === */
+/* ====================================================== */
+
+/* 1. El enlace contenedor */
+.clickable-document {
+    text-decoration: none; /* Quita el subrayado del enlace */
+    display: block;       /* Ocupa todo el ancho */
+    color: white !important; /* FUERZA EL COLOR BLANCO EN TODO */
+}
+
+/* 2. La fila del documento (Barra azul) */
+.document-row {
+    background: rgba(27, 57, 106, 0.60); 
+    margin-bottom: 15px;
+    padding: 0 40px; /* Espacio a los lados */
+    height: 100px;   /* Altura fija para uniformidad */
+    border-radius: 5px;
+    
+    /* Alineación Flexible Perfecta */
+    display: flex;
+    align-items: center; /* Centra verticalmente el contenido */
+    justify-content: space-between; /* Separa (Detalles <---> Icono) */
+    
+    transition: background-color 0.3s ease;
+}
+
+/* Efecto al pasar el mouse */
+.clickable-document:hover .document-row {
+    background: rgba(27, 57, 106, 0.85); /* Se oscurece un poco */
+    cursor: pointer;
+}
+
+/* 3. Contenedor de Nombre y Fecha */
+.document-details {
+    display: flex;          /* Usamos Flex para alinear Nombre y Fecha */
+    align-items: center;    /* Centrado vertical */
+    width: 90%;             /* Ocupa la mayoría del espacio */
+}
+
+/* Estilo del NOMBRE del documento */
+.documento-text, .documento-5 {
+    font-size: 30px;
+    font-weight: 800;
+    color: white;           /* Asegura blanco */
+    width: 45%;             /* Le damos casi la mitad del espacio */
+    text-align: left;       /* Alineado a la izquierda */
+    white-space: nowrap;    /* Evita que el texto baje de línea */
+    overflow: hidden;       /* Corta si es muy largo */
+    text-overflow: ellipsis; /* Pone "..." si es muy largo */
+}
+
+/* Estilo de la FECHA */
+.document-date {
+    font-size: 30px;
+    font-weight: 800;
+    color: white;           /* Asegura blanco */
+    width: 45%;             /* La otra mitad del espacio */
+    text-align: center;     /* Centrado en su espacio */
+}
+
+/* 4. Iconos (Reloj o Check) */
+.complete-icon, .time-icon {
+    width: 50px;
+    height: 50px;
+    /* Filtro para hacer el icono blanco */
+    filter: invert(100%) sepia(0%) saturate(7469%) hue-rotate(170deg) brightness(108%) contrast(107%);
+    flex-shrink: 0; /* Evita que el icono se aplaste */
+}
+/* ====================================================== */
+/* === CORRECCIÓN DE ESTILOS PARA LISTAS (Blanco y Alineado) === */
+/* ====================================================== */
+
+/* 1. El enlace contenedor */
+.clickable-document {
+    text-decoration: none; 
+    display: block;       
+    color: white !important; 
+    width: 100%; /* Asegura que use todo el ancho disponible */
+    box-sizing: border-box; /* IMPORTANTE: Evita desbordamiento si hay padding */
+}
+
+/* 2. La fila del documento (Barra azul) */
+.document-row {
+    background: rgba(27, 57, 106, 0.60); 
+    margin-bottom: 15px;
+    padding: 0 40px; /* Espacio a los lados */
+    height: 100px;   
+    border-radius: 5px;
+    
+    width: 100%; /* Ancho del 100% del padre */
+    box-sizing: border-box; /* ¡ESTA ES LA CLAVE! Incluye el padding dentro del ancho */
+    
+    /* Alineación Flexible Perfecta */
+    display: flex;
+    align-items: center; 
+    justify-content: space-between; 
+    
+    transition: background-color 0.3s ease;
+}
+
+/* ====================================================== */
+/* === 7. ESTILOS ADMINISTRATIVO Y MODALES === */
+/* ====================================================== */
+
+/* Botones de Acción Administrativa (Azul Oscuro) */
+.admin-actions-container {
+    position: fixed;
+    bottom: 30px;
+    right: 40px;
+    z-index: 1000;
+    display: flex;
+    flex-direction: column; /* Uno encima del otro */
+    gap: 10px;
+}
+
+.btn-admin {
+    background-color: #1B396A;
+    color: white;
+    padding: 12px 40px; /* Más anchos */
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    text-align: center;
+    transition: background-color 0.3s;
+}
+
+.btn-admin:hover {
+    background-color: #142a4f;
+}
+
+/* --- ESTILOS DEL MODAL (VENTANA EMERGENTE) --- */
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.5); /* Fondo oscuro transparente */
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 2000; /* Por encima de todo */
+}
+
+.modal-content {
+    background-color: #D9D9D9; /* Color gris claro de tu imagen */
+    padding: 40px;
+    border-radius: 5px;
+    text-align: center;
+    width: 500px;
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+}
+
+.modal-title {
+    color: #1B396A;
+    font-size: 22px;
+    font-weight: 800;
+    margin-bottom: 30px;
+}
+
+.modal-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 30px;
+}
+
+.btn-modal-primary {
+    background-color: #1B396A;
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+.btn-modal-secondary {
+    background-color: #1B396A; /* En tu imagen ambos son azules */
+    color: white;
+    padding: 10px 20px;
+    border: none;
+    font-weight: bold;
+    font-size: 16px;
+    cursor: pointer;
+    border-radius: 4px;
+}
+
+/* ====================================================== */
+/* === 9. ESTILOS DEL BUSCADOR (Dashboard Admin) === */
+/* ====================================================== */
+
+.search-container {
+    margin-bottom: 20px;
+    width: 100%;
+    display: flex;
+    justify-content: flex-start; /* Alinear a la izquierda */
+}
+
+.search-input {
+    width: 100%;
+    max-width: 600px; /* Que no sea exageradamente larga */
+    padding: 12px 20px;
+    font-size: 16px;
+    border: 1px solid #ccc;
+    border-radius: 50px; /* Bordes redondos modernos */
+    background-color: white;
+    background-image: url('/aaa/Recursos-img/search-icon.png'); /* Icono de lupa si lo tienes */
+    background-position: 15px center; 
+    background-repeat: no-repeat;
+    background-size: 20px;
+    padding-left: 15px; /* Espacio para el texto (aumentar si pones icono de fondo) */
+    outline: none;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+    transition: box-shadow 0.3s ease;
+}
+
+.search-input:focus {
+    box-shadow: 0 2px 10px rgba(27, 57, 106, 0.2);
+    border-color: #1B396A;
+}
+
+/* ====================================================== */
+/* === 8. ESTILOS PERFIL ADMINISTRATIVO (FIRMA) === */
+/* ====================================================== */
+
+.signature-section {
+    margin-top: 30px;
+}
+
+.signature-title {
+    font-size: 24px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-bottom: 10px;
+}
+
+.signature-preview-box {
+    width: 250px;
+    height: 120px;
+    background-color: white;
+    border: 1px solid #ccc;
+    margin-bottom: 15px;
+    display: flex; /* Para centrar la imagen de la firma */
+    justify-content: center;
+    align-items: center;
+    overflow: hidden;
+}
+
+.signature-img-preview {
+    max-width: 100%;
+    max-height: 100%;
+    object-fit: contain;
+}
+
+.btn-add-signature {
+    background-color: #1B396A;
+    color: white;
+    padding: 10px 50px; /* Botón ancho como en la imagen */
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    transition: background-color 0.3s;
+}
+
+.btn-add-signature:hover {
+    background-color: #142a4f;
+}
