@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELTA - Revisión Documento</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenido DIRECTOR!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Notificación" />
+                
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Perfil" />
+                </div>
+
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn">
+                        <span style="font-size:20px;">&times;</span>
+                    </button>
+                    
+                    <div class="menu-item" data-href="admin-perfil.html">
+                        <span>Mi Perfil</span>
+                    </div>
+                    
+                    <div class="menu-item logout">
+                        <span>Cerrar Sesión</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item active" data-href="admin-dashboard.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 4.png" alt="Inicio" />
+                    <span class="nav-text">Inicio</span>
+                </a>
+                 
+                <a href="#" class="nav-item" data-href="admin-dashboard.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/image 5.png" alt="Solicitudes" />
+                    <span class="nav-text">Solicitudes</span>
+                </a>
+            </nav>
+
+            <main class="content-area">
+                <div class="document-viewer-container">
+                    <div class="document-header">
+                        <a href="javascript:history.back()" class="back-button">
+                            <span style="font-size: 24px; margin-right: 10px;">&#8592;</span>
+                            Cancelar y Volver
+                        </a>
+                        <h2 class="document-title-viewer" id="doc-title-display">Cargando...</h2>
+                        <div style="width: 100px;"></div> 
+                    </div>
+                    
+                    <div class="document-frame">
+                        </div>
+                </div>
+
+                <div class="admin-actions-container">
+                    <button class="btn-admin" id="btn-firmar">Firmar</button>
+                    <button class="btn-admin" id="btn-enviar">Enviar</button>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <div class="modal-overlay hidden" id="error-modal">
+        <div class="modal-content">
+            <h3 class="modal-title">¡ERROR!, aún no tiene una firma cargada</h3>
+            <div class="modal-buttons">
+                <button class="btn-modal-primary" id="btn-agregar-firma">Agregar firma</button>
+                <button class="btn-modal-secondary" id="btn-cancelar">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            // 1. Cargar datos del documento
+            const params = new URLSearchParams(window.location.search);
+            const docName = decodeURIComponent(params.get('name') || 'Documento');
+            const docPath = decodeURIComponent(params.get('path') || '');
+            
+            document.getElementById('doc-title-display').textContent = docName;
+            
+            const frame = document.querySelector('.document-frame');
+            if (docPath) {
+                if (docPath.toLowerCase().endsWith('.pdf')) {
+                    frame.innerHTML = `<iframe src="${docPath}#toolbar=0" width="100%" height="100%" style="border:none;"></iframe>`;
+                } else {
+                    frame.innerHTML = `<img src="${docPath}" class="document-image" />`;
+                }
+            } else {
+                frame.innerHTML = '<p>No se encontró el documento.</p>';
+            }
+
+            // 2. Lógica de Firma
+            const btnFirmar = document.getElementById('btn-firmar');
+            const modalError = document.getElementById('error-modal');
+            const btnAgregarFirma = document.getElementById('btn-agregar-firma');
+            const btnCancelarError = document.getElementById('btn-cancelar');
+
+            btnFirmar.onclick = () => {
+                // Verificamos si ya subió la firma en la página de perfil
+                const tieneFirma = localStorage.getItem('adminHasSignature') === 'true';
+                
+                if (!tieneFirma) {
+                    modalError.classList.remove('hidden');
+                } else {
+                    alert("Documento firmado digitalmente con éxito.");
+                }
+            };
+
+            btnAgregarFirma.onclick = () => {
+                window.location.href = 'admin-perfil.html'; 
+            };
+
+            btnCancelarError.onclick = () => {
+                modalError.classList.add('hidden');
+            };
+            
+            // 3. Botón Enviar
+            const btnEnviar = document.getElementById('btn-enviar');
+            if(btnEnviar) {
+                btnEnviar.onclick = () => {
+                    alert("Documento enviado al siguiente paso.");
+                    window.location.href = 'admin-dashboard.html';
+                };
+            }
+        });
+    </script>
+</body>
+</html>

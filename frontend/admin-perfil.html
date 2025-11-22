@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELTA - Perfil Director</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenido DIRECTOR!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Notificación" />
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Perfil" />
+                </div>
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn"><span style="font-size:20px;">&times;</span></button>
+                    <div class="menu-item" data-href="admin-perfil.html"><span>Mi Perfil</span></div>
+                    <div class="menu-item logout"><span>Cerrar Sesión</span></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item" data-href="admin-dashboard.html">
+                    <img class="nav-icon" src="/aaa/Recursos-img/analisis.png" alt="Inicio" />
+                    <span class="nav-text">Solicitudes</span>
+                </a>
+                
+            </nav>
+
+            <main class="content-area profile-view">
+                <h1 class="page-title">Mi Perfil</h1>
+
+                <div class="profile-card">
+                    
+                    <div class="profile-photo-area">
+                        <div class="photo-frame">
+                            <div class="avatar-inner-circle">
+                                <img class="profile-avatar" src="/aaa/Recursos-img/image 51.png" alt="Avatar" />
+                            </div>
+                        </div>
+                        <div style="text-align: center;">
+                            <span style="font-weight: 800; display: block;">DIRECTOR</span>
+                            <span class="profile-name-footer">JUAN PÉREZ</span>
+                        </div>
+                    </div>
+
+                    <div class="personal-info-area">
+                        <h2 class="info-title">Mi información personal</h2>
+
+                        <div class="info-group">
+                            <span class="info-label">Nombre Completo</span>
+                            <span class="info-value primary-color">JUAN PÉREZ RODRÍGUEZ</span>
+                        </div>
+                        
+                        <div class="info-group">
+                            <span class="info-label">Correo Electrónico</span>
+                            <span class="info-value primary-color">juan.perez@delta.edu</span>
+                        </div>
+                        
+                        <div class="info-group">
+                            <span class="info-label">Departamento:</span>
+                            <span class="info-value primary-color">DIRECCIÓN GENERAL</span>
+                        </div>
+
+                        <div class="signature-section">
+                            <h3 class="signature-title">Firma Digital</h3>
+                            
+                            <div class="signature-preview-box" id="signature-display">
+                                </div>
+
+                            <input type="file" id="signature-input" accept="image/*" style="display: none;">
+
+                            <button class="btn-add-signature" id="btn-add-signature">Agregar</button>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const btnAdd = document.getElementById('btn-add-signature');
+            const input = document.getElementById('signature-input');
+            const display = document.getElementById('signature-display');
+
+            btnAdd.addEventListener('click', () => {
+                input.click();
+            });
+
+            input.addEventListener('change', (event) => {
+                const file = event.target.files[0];
+                if (file) {
+                    const reader = new FileReader();
+                    reader.onload = function(e) {
+                        display.innerHTML = `<img src="${e.target.result}" class="signature-img-preview" alt="Firma Cargada" />`;
+                        alert("¡Firma cargada exitosamente! Ahora puede firmar documentos.");
+                        localStorage.setItem('adminHasSignature', 'true');
+                    }
+                    reader.readAsDataURL(file);
+                }
+            });
+        });
+    </script>
+</body>
+</html>

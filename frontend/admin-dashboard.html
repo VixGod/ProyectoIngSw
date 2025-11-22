@@ -1,0 +1,125 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>DELTA - Director Pendientes</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="/aaa/Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca">¡Bienvenido DIRECTOR!</span>
+                <img class="notification-icon" src="/aaa/Recursos-img/image 40.png" alt="Notificación" />
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="/aaa/Recursos-img/image 13.png" alt="Perfil" />
+                </div>
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn"><span style="font-size:20px;">&times;</span></button>
+                    <div class="menu-item" data-href="admin-perfil.html"><span>Mi Perfil</span></div>
+                    <div class="menu-item logout"><span>Cerrar Sesión</span></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="#" class="nav-item active">
+                    <img class="nav-icon" src="/aaa/Recursos-img/analisis.png" alt="Inicio" />
+                    <span class="nav-text">Solicitudes</span>
+                </a>
+
+            </nav>
+
+            <main class="content-area">
+                
+                <div class="sub-nav">
+                    <div class="solicitudes-tab active-tab" data-target="pendientes-content">
+                        <span class="solicitudes-span">Pendientes</span>
+                        <div class="active-line"></div>
+                    </div>
+                    <div class="completados-tab" data-target="completados-admin-content">
+                        <span class="completados-span">Completados</span>
+                    </div>
+                </div>
+
+                <div class="search-container">
+                    <input type="text" id="search-input" class="search-input" placeholder="Buscar alumno o documento...">
+                </div>
+
+                <div class="tab-content-wrapper">
+                    
+                    <div class="document-list-container" id="pendientes-content">
+                        
+                        <a href="admin-visualizar.html?id=5&name=Documento 5 (Norma Rebeca)&path=/aaa/Recursos-img/01 editado.pdf" class="clickable-document searchable-item">
+                            <div class="document-row">
+                                <div class="document-details">
+                                    <span class="documento-text">Documento 5 (Norma Rebeca)</span>
+                                    <span class="document-date">30-10-2025</span>
+                                </div>
+                                <img class="time-icon" src="/aaa/Recursos-img/image 20.png" alt="Pendiente" />
+                            </div>
+                        </a>
+
+                        <a href="#" class="clickable-document searchable-item">
+                            <div class="document-row">
+                                <div class="document-details">
+                                    <span class="documento-text">Constancia (Juan Pérez)</span>
+                                    <span class="document-date">01-11-2025</span>
+                                </div>
+                                <img class="time-icon" src="/aaa/Recursos-img/image 20.png" alt="Pendiente" />
+                            </div>
+                        </a>
+
+                        <a href="#" class="clickable-document searchable-item">
+                            <div class="document-row">
+                                <div class="document-details">
+                                    <span class="documento-text">Kardex (María López)</span>
+                                    <span class="document-date">02-11-2025</span>
+                                </div>
+                                <img class="time-icon" src="/aaa/Recursos-img/image 20.png" alt="Pendiente" />
+                            </div>
+                        </a>
+
+                    </div>
+
+                    <div class="document-list-container hidden" id="completados-admin-content">
+                        <p style="text-align: center; color: #666;">No hay documentos completados recientes.</p>
+                    </div>
+
+                </div>
+            </main>
+        </div>
+    </div>
+    
+    <script src="app.js"></script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const searchInput = document.getElementById('search-input');
+            const listItems = document.querySelectorAll('.searchable-item'); 
+
+            searchInput.addEventListener('keyup', (e) => {
+                const term = e.target.value.toLowerCase();
+
+                listItems.forEach(item => {
+                    const text = item.textContent.toLowerCase();
+                    if (text.includes(term)) {
+                        item.style.display = 'block'; 
+                    } else {
+                        item.style.display = 'none'; 
+                    }
+                });
+            });
+        });
+    </script>
+</body>
+</html>
