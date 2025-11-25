@@ -27,7 +27,7 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             localStorage.setItem('usuarioActivo', JSON.stringify(data.docente));
 
             // Redirigimos a la siguiente página (catalogo.html)
-            window.location.href = 'documentos.html'; 
+            window.location.href = 'inicio.html'; 
         } else {
             // Login Fallido (Credenciales incorrectas)
             mensajeError.textContent = data.message;
