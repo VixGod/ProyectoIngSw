@@ -5,10 +5,13 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DeltaLogin</title>
     <link rel="stylesheet" href="login.css">
+    <style>
+        .error-msg { color: red; font-weight: bold; display: none; margin-top: 10px; }
+    </style>
 </head>
 <body>
     <header>
-        <img class="logo" src="Recursos-img/logo.jpeg" alt="Logo">
+        <img class="logo" src="Recursos-img/logo (1).jpeg" alt="Logo">
         <div>
             <button onclick="window.open('https://edd.tecnm.mx/docentes/index.php', '_blank');">EDD</button>
             <img src="Recursos-img/engranaje.png" alt="engranaje" class="engranaje">
@@ -19,20 +22,69 @@
             <h2>Bienvenido a</h2>
             <h1>DELTA</h1>
             <p>Por favor ingresa tus datos para obtener tus documentos.</p>
-            <form id="login-form">
-                <label for="username">Usuario:</label> <br>
-                <input type="text" id="username" name="username" value="" required>
-                <BR></BR>
+            
+            <form id="loginForm">
+                <label for="username">Usuario (RFC):</label> <br>
+                <input type="text" id="username" name="username" required>
+                <br><br>
                 <label for="password">Contraseña:</label> <br>
                 <input type="password" id="password" name="password" required>
-                <BR></BR>
+                <br><br>
                 <button type="submit">Iniciar Sesión</button>
-                <p id="error-message" style="color: red; text-align: center; display: none;"></p>
+                <p id="errorMsg" class="error-msg">Usuario o contraseña incorrectos</p>
             </form>
         </article>
         <article class="logofondo"><img src="Recursos-img/LOGO_TECNM.png" alt="Logo tecnm"></article>
     </section>
 
-    <script src="login.js"></script>
+    <script>
+        document.getElementById('loginForm').addEventListener('submit', async (e) => {
+            e.preventDefault(); 
+            const rfc = document.getElementById('username').value;
+            const password = document.getElementById('password').value;
+            const errorMsg = document.getElementById('errorMsg');
+            
+            errorMsg.style.display = 'none';
+
+            try {
+                const response = await fetch('http://localhost:3000/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ rfc: rfc, password: password })
+                });
+
+                const data = await response.json();
+
+                if (data.success) {
+                    // Guardamos los datos
+                    localStorage.setItem('usuarioActivo', JSON.stringify(data.docente));
+                    
+                    // NUEVO: Si la BD trajo firma, la guardamos para uso inmediato
+                    if (data.docente.FirmaDigital) {
+                        localStorage.setItem('adminSignatureImage', data.docente.FirmaDigital);
+                        localStorage.setItem('adminHasSignature', 'true');
+                    } else {
+                        localStorage.removeItem('adminSignatureImage');
+                        localStorage.removeItem('adminHasSignature');
+                    }
+                    
+                    console.log("Rol detectado:", data.docente.Rol);
+                    
+                    if (data.docente.Rol === 'Administrativo') {
+                        window.location.href = 'admin-dashboard.html';
+                    } else {
+                        window.location.href = 'inicio.html'; 
+                    }
+                } else {
+                    errorMsg.textContent = data.message;
+                    errorMsg.style.display = 'block';
+                }
+            } catch (error) {
+                console.error("Error:", error);
+                errorMsg.textContent = "Error de conexión con el servidor.";
+                errorMsg.style.display = 'block';
+            }
+        });
+    </script>
 </body>
 </html>
