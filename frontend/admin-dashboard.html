@@ -17,7 +17,7 @@
                 </div>
             </div>
             <div class="user-info">
-                <span class="bienvenida-norma-rebeca">¡Bienvenido DIRECTOR!</span>
+                <span class="bienvenida-norma-rebeca" id="header-username">¡Bienvenido!</span>
                 <img class="notification-icon" src="Recursos-img/image 40.png" alt="Notificación" />
                 <div class="profile-container" id="profile-btn">
                     <img class="user-icon" src="Recursos-img/image 13.png" alt="Perfil" />
@@ -32,15 +32,13 @@
 
         <div class="page-content">
             <nav class="sidebar">
-                <a href="#" class="nav-item active">
-                    <img class="nav-icon" src="Recursos-img/analisis.png" alt="Inicio" />
-                    <span class="nav-text">Solicitudes</span>
-                </a>
-
-            </nav>
+    <a href="#" class="nav-item" data-href="admin-dashboard.html">
+        <img class="nav-icon" src="Recursos-img/image 5.png" alt="Solicitudes" />
+        <span class="nav-text">Solicitudes</span>
+    </a>
+</nav>
 
             <main class="content-area">
-                
                 <div class="sub-nav">
                     <div class="solicitudes-tab active-tab" data-target="pendientes-content">
                         <span class="solicitudes-span">Pendientes</span>
@@ -58,41 +56,9 @@
                 <div class="tab-content-wrapper">
                     
                     <div class="document-list-container" id="pendientes-content">
-                        
-                        <a href="admin-visualizar.html?id=5&name=Documento 5 (Norma Rebeca)&path=/aaa/Recursos-img/01 editado.pdf" class="clickable-document searchable-item">
-                            <div class="document-row">
-                                <div class="document-details">
-                                    <span class="documento-text">Documento 5 (Norma Rebeca)</span>
-                                    <span class="document-date">30-10-2025</span>
-                                </div>
-                                <img class="time-icon" src="Recursos-img/image 20.png" alt="Pendiente" />
-                            </div>
-                        </a>
-
-                        <a href="#" class="clickable-document searchable-item">
-                            <div class="document-row">
-                                <div class="document-details">
-                                    <span class="documento-text">Constancia (Juan Pérez)</span>
-                                    <span class="document-date">01-11-2025</span>
-                                </div>
-                                <img class="time-icon" src="Recursos-img/image 20.png" alt="Pendiente" />
-                            </div>
-                        </a>
-
-                        <a href="#" class="clickable-document searchable-item">
-                            <div class="document-row">
-                                <div class="document-details">
-                                    <span class="documento-text">Kardex (María López)</span>
-                                    <span class="document-date">02-11-2025</span>
-                                </div>
-                                <img class="time-icon" src="Recursos-img/image 20.png" alt="Pendiente" />
-                            </div>
-                        </a>
-
-                    </div>
+                        </div>
 
                     <div class="document-list-container hidden" id="completados-admin-content">
-                        <p style="text-align: center; color: #666;">No hay documentos completados recientes.</p>
                     </div>
 
                 </div>
@@ -105,20 +71,19 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
             const searchInput = document.getElementById('search-input');
-            const listItems = document.querySelectorAll('.searchable-item'); 
-
-            searchInput.addEventListener('keyup', (e) => {
-                const term = e.target.value.toLowerCase();
-
-                listItems.forEach(item => {
-                    const text = item.textContent.toLowerCase();
-                    if (text.includes(term)) {
-                        item.style.display = 'block'; 
-                    } else {
-                        item.style.display = 'none'; 
-                    }
+            // Usamos un observador para detectar cuando se llenan los datos desde la BD
+            const observer = new MutationObserver(() => {
+                const listItems = document.querySelectorAll('.searchable-item'); 
+                searchInput.addEventListener('keyup', (e) => {
+                    const term = e.target.value.toLowerCase();
+                    listItems.forEach(item => {
+                        const text = item.textContent.toLowerCase();
+                        item.style.display = text.includes(term) ? 'block' : 'none';
+                    });
                 });
             });
+            const target = document.getElementById('pendientes-content');
+            if(target) observer.observe(target, { childList: true });
         });
     </script>
 </body>
