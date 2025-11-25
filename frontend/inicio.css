@@ -874,3 +874,138 @@ body {
 .btn-add-signature:hover {
     background-color: #142a4f;
 }
+
+/* ====================================================== */
+/* === 10. ESTILOS DE FIRMA Y ACCIONES (ADMIN) === */
+/* ====================================================== */
+
+.admin-actions-container {
+    position: fixed;
+    bottom: 30px;
+    right: 40px;
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    z-index: 1000;
+}
+
+/* Ajuste para que el botón se vea deshabilitado cuando está procesando */
+.btn-admin:disabled {
+    background-color: #ccc;
+    cursor: not-allowed;
+    transform: none; /* Evita efecto de click si tuviera */
+    box-shadow: none;
+}
+
+/* ====================================================== */
+/* === 11. ESTILOS DE ESTADO DEL DOCUMENTO (DOCENTE) === */
+/* ====================================================== */
+
+/* Etiqueta que reemplaza al botón de descargar cuando está pendiente */
+.status-badge {
+    padding: 12px 25px;
+    border-radius: 50px;
+    font-weight: 800;
+    font-size: 16px;
+    color: white;
+    display: inline-block;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
+}
+
+.status-pendiente {
+    background-color: #e67e22; /* Naranja preventivo */
+}
+
+/* ====================================================== */
+/* === 12. CORRECCIÓN URGENTE DE LAYOUT (VISUALIZADOR) === */
+/* ====================================================== */
+
+/* 1. El área principal ocupa toda la altura menos el header */
+.content-area {
+    position: relative; /* Necesario para posicionamiento */
+    height: calc(100vh - 100px) !important; /* 100px es aprox la altura del header */
+    overflow: hidden; /* Evita scroll doble en la página */
+    padding: 0 !important; /* Quitamos padding para aprovechar espacio */
+    display: block !important; /* Restauramos bloque normal */
+}
+
+/* 2. El contenedor del visor ocupa el 100% del espacio disponible */
+.document-viewer-container {
+    width: 100%;
+    height: 100%;
+    margin: 0;
+    padding: 20px; /* Un poco de aire interno */
+    box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+}
+
+.document-header {
+    flex: 0 0 auto; /* Altura natural para el título */
+    margin-bottom: 10px;
+}
+
+/* 3. El cuadro del PDF crece para llenar todo el hueco */
+.document-frame {
+    flex: 1 1 auto; /* Crece elásticamente */
+    position: relative;
+    background-color: #525659; /* Color de fondo típico de visores PDF */
+    border: 1px solid #ccc;
+    overflow: hidden;
+}
+
+/* 4. El iframe o imagen se fuerza al 100% absoluto */
+.document-frame iframe,
+.document-frame img.document-image {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    border: none;
+    object-fit: contain;
+}
+
+/* 5. RESTAURAMOS EL BOTÓN FLOTANTE (FIXED) */
+/* Esto lo devuelve a la esquina inferior derecha, encima del documento */
+.download-button-container, 
+.admin-actions-container {
+    position: fixed !important;
+    bottom: 30px !important;
+    right: 40px !important;
+    z-index: 2000 !important; /* Por encima de todo */
+    background: transparent !important; /* Sin fondo blanco de barra */
+    border: none !important;
+    padding: 0 !important;
+    width: auto !important;
+}
+
+/* ====================================================== */
+/* === 13. CORRECCIÓN FINAL: RESTAURAR PERFIL === */
+/* ====================================================== */
+
+/* Forzamos que la vista de Perfil recupere su centrado y Flexbox */
+.content-area.profile-view {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;     /* Centra horizontalmente */
+    justify-content: flex-start !important;
+    padding: 40px !important;           /* Recupera el espacio interno */
+    height: auto !important;            /* Permite que crezca si es necesario */
+    overflow-y: auto !important;        /* Permite scroll si la pantalla es chica */
+}
+
+/* ====================================================== */
+/* === 14. CORRECCIÓN FINAL: RESTAURAR CATÁLOGO === */
+/* ====================================================== */
+
+/* Restauramos el centrado Flexbox para la vista de Catálogo */
+.content-area.catalog-view {
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: center !important;     /* Centra todo horizontalmente */
+    justify-content: flex-start !important;
+    padding: 40px !important;           /* Espacio interno cómodo */
+    height: auto !important;            /* Permite scroll si la lista es larga */
+    overflow-y: auto !important;        /* Scroll vertical activado */
+}
