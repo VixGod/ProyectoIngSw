@@ -3,14 +3,14 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>DELTA - Catálogo de Documentos</title>
+    <title>DELTA - Catálogo</title>
     <link rel="stylesheet" href="inicio.css">
 </head>
 <body>
     <div class="main-container">
         <header class="header">
             <div class="logo-area">
-                <img class="logo-img" src="Recursos-img/image 9.png" alt="Logo DELTA" />
+                <img class="logo-img" src="Recursos-img/image 9.png" alt="Logo" />
                 <div class="header-title">
                     <span class="header-title-text">DELTA</span>
                     <span class="header-subtitle-text">Obtención de Documentos</span>
@@ -18,29 +18,14 @@
             </div>
             
             <div class="user-info">
-                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
-                <img class="notification-icon" src="Recursos-img/image 40.png" alt="Icono de Notificación" />
-                
+                <span class="bienvenida-norma-rebeca" id="header-username">Cargando...</span>
                 <div class="profile-container" id="profile-btn">
-                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Icono de Perfil" />
+                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Perfil" />
                 </div>
-
                 <div class="profile-menu hidden" id="profile-menu">
-                    <button class="close-btn" id="close-menu-btn">
-                        <span style="font-size: 20px; color: #333;">&times;</span>
-                    </button>
-                    <div class="menu-item" data-href="perfil.html">
-                        <img class="menu-icon" src="Recursos-img/image 31.png" alt="Mi Perfil" />
-                        <span>Mi Perfil</span>
-                    </div>
-                    <div class="menu-item">
-                        <img class="menu-icon" src="Recursos-img/image 32.png" alt="Ayuda y Soporte" />
-                        <span>Ayuda y Soporte</span>
-                    </div>
-                    <div class="menu-item logout">
-                        <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesiónl" />
-                        <span>Cerrar Sesión</span>
-                    </div>
+                    <button class="close-btn" id="close-menu-btn"><span>&times;</span></button>
+                    <div class="menu-item" data-href="perfil.html"><span>Mi Perfil</span></div>
+                    <div class="menu-item logout"><span>Cerrar Sesión</span></div>
                 </div>
             </div>
         </header>
@@ -48,55 +33,20 @@
         <div class="page-content">
             <nav class="sidebar">
                 <a href="#" class="nav-item active" data-href="inicio.html">
-                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Icono Inicio" />
+                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Inicio" />
                     <span class="nav-text">Inicio</span>
                 </a>
-                <a href="#" class="nav-item" data-href="documentos.html"> 
-                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Icono Documentos" />
+                <a href="#" class="nav-item" data-href="documentos.html">
+                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Documentos" />
                     <span class="nav-text">Documentos</span>
-                </a>
-                <a href="#" class="nav-item nav-footer">
-                    <img class="nav-icon" src=Recursos-img/image 8.png" alt="Icono Footer" />
                 </a>
             </nav>
 
             <main class="content-area catalog-view">
                 <h1 class="catalog-title">Catálogo de documentos</h1>
+                
                 <div class="catalog-container">
-                    
-                    <div class="catalog-row">
-                        <span class="documento-text">Constancia Laboral</span>
-                        <a href="vista-previa-solicitud.html?name=Constancia Laboral&path=Recursos-img/01 editado.pdf" class="action-buttons" style="text-decoration: none; color: inherit;">
-                            <span class="obtain-text">Obtener</span>
-                            <img class="action-icon" src="Recursos-img/image 36.png" alt="Icono Editar" />
-                        </a>
                     </div>
-
-                    <div class="catalog-row">
-                        <span class="documento-text">Kardex de Calificaciones</span>
-                        <a href="vista-previa-solicitud.html?name=Kardex&path=Recursos-img/documento-ejemplo-default.png" class="action-buttons" style="text-decoration: none; color: inherit;">
-                            <span class="obtain-text">Obtener</span>
-                            <img class="action-icon" src="Recursos-img/image 36.png" alt="Icono Editar" />
-                        </a>
-                    </div>
-
-                    <div class="catalog-row">
-                        <span class="documento-text">Carta de Buena Conducta</span>
-                        <a href="vista-previa-solicitud.html?name=Carta Buena Conducta&path=Recursos-img/documento-ejemplo-default.png" class="action-buttons" style="text-decoration: none; color: inherit;">
-                            <span class="obtain-text">Obtener</span>
-                            <img class="action-icon" src="Recursos-img/image 36.png" alt="Icono Editar" />
-                        </a>
-                    </div>
-
-                    <div class="catalog-row">
-                        <span class="documento-text">Boleta de Calificaciones</span>
-                        <a href="vista-previa-solicitud.html?name=Boleta&path=Recursos-img/documento-ejemplo-default.png" class="action-buttons" style="text-decoration: none; color: inherit;">
-                            <span class="obtain-text">Obtener</span>
-                            <img class="action-icon" src="Recursos-img/image 36.png" alt="Icono Editar" />
-                        </a>
-                    </div>
-
-                </div>
             </main>
         </div>
     </div>
