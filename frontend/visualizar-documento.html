@@ -48,12 +48,12 @@
 
         <div class="page-content">
             <nav class="sidebar">
-                <a href="#" class="nav-item" data-href="catalogo.html">
+                <a href="#" class="nav-item" data-href="inicio.html">
                     <img class="nav-icon" src="Recursos-img/image 4.png" alt="Icono Inicio" />
                     <span class="nav-text">Inicio</span>
                 </a>
 
-                <a href="#" class="nav-item active" data-href="inicio.html">
+                <a href="#" class="nav-item active" data-href="documentos.html">
                     <img class="nav-icon" src="Recursos-img/image 5.png" alt="Icono Documentos" />
                     <span class="nav-text">Documentos</span>
                 </a>
@@ -79,7 +79,7 @@
                         </div>
                 </div>
 
-                <div class="download-button-container">
+                <div class="download-button-container" id="action-container">
                     <button class="download-button" id="download-doc-btn">
                         <span style="font-size: 20px;">&#128229;</span>
                         Descargar
@@ -92,26 +92,43 @@
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. OBTENER DATOS DE URL
             const params = new URLSearchParams(window.location.search);
             const docId = params.get('id');
             const docName = decodeURIComponent(params.get('name') || 'Documento sin Nombre');
             const docPath = decodeURIComponent(params.get('path') || '');
+            const docStatus = params.get('status') || 'Pendiente'; 
 
             const documentTitleElement = document.getElementById('document-title');
             const documentFrame = document.querySelector('.document-frame'); 
             const downloadDocBtn = document.getElementById('download-doc-btn');
+            const actionContainer = document.getElementById('action-container');
             const pageTitleDoc = document.getElementById('page-title-doc');
 
             documentTitleElement.textContent = docName;
             pageTitleDoc.textContent = `DELTA - ${docName}`;
 
+            // 2. LÓGICA DE BLOQUEO DE DESCARGA
+            // Si NO está firmado ni completado, ocultamos el botón y mostramos aviso.
+            if (docStatus !== 'Firmado' && docStatus !== 'Completado') {
+                downloadDocBtn.style.display = 'none'; 
+                
+                // Crear mensaje de aviso usando las clases de inicio.css
+                const statusMsg = document.createElement('div');
+                statusMsg.className = 'status-badge status-pendiente';
+                statusMsg.innerHTML = '&#9203; Documento en Proceso de Firma';
+                actionContainer.appendChild(statusMsg);
+            }
+
+            // 3. CARGAR VISUALIZACIÓN
             if (docPath) {
-                const isPdf = docPath.toLowerCase().endsWith('.pdf');
+                const isPdf = docPath.toLowerCase().endsWith('.pdf') || docPath.includes('generar-constancia');
+                const urlNoCache = docPath.includes('?') ? `${docPath}&t=${Date.now()}` : `${docPath}?t=${Date.now()}`;
 
                 if (isPdf) {
                     documentFrame.innerHTML = `
                         <iframe 
-                            src="${docPath}" 
+                            src="${urlNoCache}#toolbar=0&navpanes=0" 
                             width="100%" 
                             height="100%" 
                             style="border: none;"
@@ -123,19 +140,43 @@
                     documentFrame.innerHTML = `
                         <img 
                             class="document-image" 
-                            src="${docPath}" 
+                            src="${urlNoCache}" 
                             alt="Visualización del documento" 
                         />
                     `;
                 }
 
-                downloadDocBtn.onclick = () => {
-                    const a = document.createElement('a');
-                    a.href = docPath;
-                    a.download = docName.replace(/ /g, '_');
-                    document.body.appendChild(a);
-                    a.click();
-                    document.body.removeChild(a);
+                // 4. LÓGICA DE DESCARGA SEGURA
+                downloadDocBtn.onclick = async () => {
+                    try {
+                        const originalText = downloadDocBtn.innerHTML;
+                        downloadDocBtn.textContent = "Descargando...";
+                        downloadDocBtn.disabled = true;
+
+                        const response = await fetch(urlNoCache);
+                        if (!response.ok) throw new Error("Error en la red");
+                        
+                        const blob = await response.blob();
+                        const url = window.URL.createObjectURL(blob);
+                        const a = document.createElement('a');
+                        a.href = url;
+                        a.download = docName.replace(/ /g, '_') + '.pdf'; 
+                        
+                        document.body.appendChild(a);
+                        a.click();
+                        
+                        window.URL.revokeObjectURL(url);
+                        document.body.removeChild(a);
+                        
+                        downloadDocBtn.innerHTML = originalText;
+                        downloadDocBtn.disabled = false;
+
+                    } catch (error) {
+                        console.error("Error al descargar:", error);
+                        alert("No se pudo descargar el archivo.");
+                        downloadDocBtn.disabled = false;
+                        downloadDocBtn.textContent = "Descargar";
+                    }
                 };
             } else {
                 documentFrame.innerHTML = '<p style="color: #666; font-size: 20px;">No se encontró el archivo.</p>';
