@@ -18,7 +18,7 @@
             </div>
             
             <div class="user-info">
-                <span class="bienvenida-norma-rebeca">¡Bienvenido DIRECTOR!</span>
+                <span class="bienvenida-norma-rebeca" id="header-username">¡Bienvenido DIRECTOR!</span>
                 <img class="notification-icon" src="Recursos-img/image 40.png" alt="Notificación" />
                 <div class="profile-container" id="profile-btn">
                     <img class="user-icon" src="Recursos-img/image 13.png" alt="Perfil" />
@@ -34,10 +34,9 @@
         <div class="page-content">
             <nav class="sidebar">
                 <a href="#" class="nav-item" data-href="admin-dashboard.html">
-                    <img class="nav-icon" src="Recursos-img/analisis.png" alt="Inicio" />
+                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Solicitudes" />
                     <span class="nav-text">Solicitudes</span>
                 </a>
-                
             </nav>
 
             <main class="content-area profile-view">
@@ -53,7 +52,7 @@
                         </div>
                         <div style="text-align: center;">
                             <span style="font-weight: 800; display: block;">DIRECTOR</span>
-                            <span class="profile-name-footer">JUAN PÉREZ</span>
+                            <span class="profile-name-footer" id="card-name-short">...</span>
                         </div>
                     </div>
 
@@ -62,12 +61,12 @@
 
                         <div class="info-group">
                             <span class="info-label">Nombre Completo</span>
-                            <span class="info-value primary-color">JUAN PÉREZ RODRÍGUEZ</span>
+                            <span class="info-value primary-color" id="card-name-full">...</span>
                         </div>
                         
                         <div class="info-group">
                             <span class="info-label">Correo Electrónico</span>
-                            <span class="info-value primary-color">juan.perez@delta.edu</span>
+                            <span class="info-value primary-color" id="card-email">...</span>
                         </div>
                         
                         <div class="info-group">
@@ -95,9 +94,17 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
+            // 1. Inicialización de Elementos
             const btnAdd = document.getElementById('btn-add-signature');
             const input = document.getElementById('signature-input');
             const display = document.getElementById('signature-display');
+
+            // 2. Cargar firma si ya existe en sesión
+            const savedSignature = localStorage.getItem('adminSignatureImage');
+            if (savedSignature) {
+                display.innerHTML = `<img src="${savedSignature}" class="signature-img-preview" alt="Firma Cargada" />`;
+                btnAdd.textContent = "Cambiar Firma";
+            }
 
             btnAdd.addEventListener('click', () => {
                 input.click();
@@ -107,14 +114,66 @@
                 const file = event.target.files[0];
                 if (file) {
                     const reader = new FileReader();
-                    reader.onload = function(e) {
-                        display.innerHTML = `<img src="${e.target.result}" class="signature-img-preview" alt="Firma Cargada" />`;
-                        alert("¡Firma cargada exitosamente! Ahora puede firmar documentos.");
-                        localStorage.setItem('adminHasSignature', 'true');
+                    reader.onload = async function(e) {
+                        const result = e.target.result;
+                        
+                        // 1. Mostrar visualmente
+                        display.innerHTML = `<img src="${result}" class="signature-img-preview" alt="Firma Cargada" />`;
+                        
+                        // 2. Obtener usuario
+                        const usuario = JSON.parse(localStorage.getItem('usuarioActivo'));
+                        if (!usuario) return alert("Error de sesión");
+
+                        try {
+                            btnAdd.textContent = "Guardando...";
+                            
+                            // 3. ENVIAR A LA BASE DE DATOS
+                            const response = await fetch('http://localhost:3000/api/guardar-firma-perfil', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    idUsuario: usuario.DocenteID,
+                                    rol: usuario.Cargo, 
+                                    firmaBase64: result
+                                })
+                            });
+                            
+                            const data = await response.json();
+                            
+                            if (data.success) {
+                                // 4. Actualizar LocalStorage
+                                localStorage.setItem('adminHasSignature', 'true');
+                                localStorage.setItem('adminSignatureImage', result);
+                                alert("✅ Firma guardada en la Base de Datos correctamente.");
+                                btnAdd.textContent = "Cambiar Firma";
+                            } else {
+                                alert("Error al guardar en BD: " + data.message);
+                            }
+
+                        } catch (error) {
+                            console.error(error);
+                            alert("Error de conexión con el servidor.");
+                        }
                     }
                     reader.readAsDataURL(file);
                 }
             });
+
+            // 3. Cargar datos del usuario en pantalla
+            const userData = localStorage.getItem('usuarioActivo');
+            if (userData) {
+                try {
+                    const user = JSON.parse(userData);
+                    const headerName = document.getElementById('header-username');
+                    if(headerName) headerName.textContent = `¡Bienvenido ${user.NombreDocente || user.DirectorNombre || 'DIRECTOR'}!`;
+
+                    const fullName = `${user.NombreDocente || user.DirectorNombre} ${user.DocenteApePat || user.DirectorApePat || ''}`;
+                    document.getElementById('card-name-full').textContent = fullName.toUpperCase();
+                    document.getElementById('card-name-short').textContent = (user.NombreDocente || user.DirectorNombre).toUpperCase();
+                    document.getElementById('card-email').textContent = user.DocenteCorreo || 'director@delta.edu';
+
+                } catch (e) { console.error(e); }
+            }
         });
     </script>
 </body>
