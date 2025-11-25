@@ -377,7 +377,9 @@ app.get('/api/generar-constancia', async (req, res) => {
         let archivoPDF = fileQuery.recordset[0].NombreArchivoPDF;
         const tipoDocId = fileQuery.recordset[0].TipoID;
 
-        const rutasPosibles = [path.join(__dirname, 'aaa', 'Recursos-img', archivoPDF), path.join(__dirname, '..', 'frontend', 'Recursos-img', archivoPDF)];
+        const rutasPosibles = [
+            path.join(__dirname, '..', 'frontend', 'Recursos-img', archivoPDF)
+        ];
         let fileBytes = null;
         for (const ruta of rutasPosibles) { if (fs.existsSync(ruta)) { fileBytes = fs.readFileSync(ruta); break; } }
         if (!fileBytes) return res.status(404).send(`No se encuentra archivo '${archivoPDF}'.`);
