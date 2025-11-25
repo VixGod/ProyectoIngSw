@@ -18,7 +18,7 @@
             </div>
             
             <div class="user-info">
-                <span class="bienvenida-norma-rebeca">¡Bienvenido DIRECTOR!</span>
+                <span class="bienvenida-norma-rebeca" id="header-username">¡Bienvenido!</span>
                 <img class="notification-icon" src="Recursos-img/image 40.png" alt="Notificación" />
                 
                 <div class="profile-container" id="profile-btn">
@@ -29,11 +29,9 @@
                     <button class="close-btn" id="close-menu-btn">
                         <span style="font-size:20px;">&times;</span>
                     </button>
-                    
                     <div class="menu-item" data-href="admin-perfil.html">
                         <span>Mi Perfil</span>
                     </div>
-                    
                     <div class="menu-item logout">
                         <span>Cerrar Sesión</span>
                     </div>
@@ -43,11 +41,6 @@
 
         <div class="page-content">
             <nav class="sidebar">
-                <a href="#" class="nav-item active" data-href="admin-dashboard.html">
-                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Inicio" />
-                    <span class="nav-text">Inicio</span>
-                </a>
-                 
                 <a href="#" class="nav-item" data-href="admin-dashboard.html">
                     <img class="nav-icon" src="Recursos-img/image 5.png" alt="Solicitudes" />
                     <span class="nav-text">Solicitudes</span>
@@ -57,21 +50,20 @@
             <main class="content-area">
                 <div class="document-viewer-container">
                     <div class="document-header">
-                        <a href="javascript:history.back()" class="back-button">
+                        <a href="admin-dashboard.html" class="back-button">
                             <span style="font-size: 24px; margin-right: 10px;">&#8592;</span>
-                            Cancelar y Volver
+                            Volver al Dashboard
                         </a>
                         <h2 class="document-title-viewer" id="doc-title-display">Cargando...</h2>
                         <div style="width: 100px;"></div> 
                     </div>
                     
-                    <div class="document-frame">
+                    <div class="document-frame" id="doc-frame">
                         </div>
                 </div>
 
                 <div class="admin-actions-container">
-                    <button class="btn-admin" id="btn-firmar">Firmar</button>
-                    <button class="btn-admin" id="btn-enviar">Enviar</button>
+                    <button class="btn-admin" id="btn-firmar">Firmar y Aprobar</button>
                 </div>
             </main>
         </div>
@@ -79,9 +71,11 @@
 
     <div class="modal-overlay hidden" id="error-modal">
         <div class="modal-content">
-            <h3 class="modal-title">¡ERROR!, aún no tiene una firma cargada</h3>
+            <h3 class="modal-title" style="color: #d9534f;">¡Atención!</h3>
+            <p style="font-size: 18px; margin-bottom: 20px;">No has configurado tu firma digital.</p>
+            <p style="margin-bottom: 30px;">Para aprobar documentos, necesitas cargar una imagen de tu firma en tu perfil.</p>
             <div class="modal-buttons">
-                <button class="btn-modal-primary" id="btn-agregar-firma">Agregar firma</button>
+                <button class="btn-modal-primary" id="btn-ir-perfil">Ir a Mi Perfil</button>
                 <button class="btn-modal-secondary" id="btn-cancelar">Cancelar</button>
             </div>
         </div>
@@ -91,56 +85,93 @@
     
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            // 1. Cargar datos del documento
+            // 1. OBTENER DATOS (Incluyendo status)
             const params = new URLSearchParams(window.location.search);
+            const docId = params.get('id');
             const docName = decodeURIComponent(params.get('name') || 'Documento');
             const docPath = decodeURIComponent(params.get('path') || '');
-            
-            document.getElementById('doc-title-display').textContent = docName;
-            
-            const frame = document.querySelector('.document-frame');
-            if (docPath) {
-                if (docPath.toLowerCase().endsWith('.pdf')) {
-                    frame.innerHTML = `<iframe src="${docPath}#toolbar=0" width="100%" height="100%" style="border:none;"></iframe>`;
-                } else {
-                    frame.innerHTML = `<img src="${docPath}" class="document-image" />`;
-                }
+            const docStatus = params.get('status') || 'Pendiente';
+
+            const usuarioStr = localStorage.getItem('usuarioActivo');
+            const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
+            const firmaGuardada = localStorage.getItem('adminSignatureImage');
+
+            // 2. RENDERIZAR LA VISTA
+            const titleDisplay = document.getElementById('doc-title-display');
+            const btnFirmar = document.getElementById('btn-firmar');
+            const containerAcciones = document.querySelector('.admin-actions-container');
+
+            // Cambiar título y ocultar botón según estado
+            if (docStatus === 'Firmado' || docStatus === 'Completado') {
+                titleDisplay.textContent = `Visualizando: ${docName} (Firmado)`;
+                titleDisplay.style.color = '#28a745'; 
+                if (containerAcciones) containerAcciones.style.display = 'none';
             } else {
-                frame.innerHTML = '<p>No se encontró el documento.</p>';
+                titleDisplay.textContent = `Revisando: ${docName}`;
+            }
+            
+            if(usuario) {
+                const nombreMostrar = usuario.NombreDocente || usuario.DirectorNombre || 'Administrador';
+                const rolMostrar = usuario.Cargo || 'Directivo';
+                document.getElementById('header-username').textContent = `${rolMostrar}: ${nombreMostrar}`;
             }
 
-            // 2. Lógica de Firma
-            const btnFirmar = document.getElementById('btn-firmar');
-            const modalError = document.getElementById('error-modal');
-            const btnAgregarFirma = document.getElementById('btn-agregar-firma');
-            const btnCancelarError = document.getElementById('btn-cancelar');
-
-            btnFirmar.onclick = () => {
-                // Verificamos si ya subió la firma en la página de perfil
-                const tieneFirma = localStorage.getItem('adminHasSignature') === 'true';
-                
-                if (!tieneFirma) {
-                    modalError.classList.remove('hidden');
+            const frame = document.getElementById('doc-frame');
+            if (docPath) {
+                const urlConCache = `${docPath}&t=${new Date().getTime()}`;
+                if (docPath.toLowerCase().includes('constancia') || docPath.toLowerCase().endsWith('.pdf')) {
+                    frame.innerHTML = `<iframe src="${urlConCache}#toolbar=0&navpanes=0" width="100%" height="100%" style="border:none;"></iframe>`;
                 } else {
-                    alert("Documento firmado digitalmente con éxito.");
+                    frame.innerHTML = `<img src="${urlConCache}" class="document-image" alt="Documento" />`;
                 }
-            };
+            } else {
+                frame.innerHTML = '<p style="color: #666;">No se encontró la ruta del documento.</p>';
+            }
 
-            btnAgregarFirma.onclick = () => {
-                window.location.href = 'admin-perfil.html'; 
-            };
+            // 3. LÓGICA DE FIRMADO
+            if (btnFirmar && containerAcciones.style.display !== 'none') {
+                const modalError = document.getElementById('error-modal');
+                const btnIrPerfil = document.getElementById('btn-ir-perfil');
+                const btnCancelar = document.getElementById('btn-cancelar');
 
-            btnCancelarError.onclick = () => {
-                modalError.classList.add('hidden');
-            };
-            
-            // 3. Botón Enviar
-            const btnEnviar = document.getElementById('btn-enviar');
-            if(btnEnviar) {
-                btnEnviar.onclick = () => {
-                    alert("Documento enviado al siguiente paso.");
-                    window.location.href = 'admin-dashboard.html';
+                btnFirmar.onclick = async () => {
+                    if (!usuario) { alert("Error: Sesión expirada."); window.location.href = 'login.html'; return; }
+                    if (!firmaGuardada) { modalError.classList.remove('hidden'); return; }
+
+                    if (!confirm(`¿Estás seguro de firmar el documento "${docName}"?`)) return;
+
+                    btnFirmar.textContent = "Procesando...";
+                    btnFirmar.disabled = true;
+
+                    try {
+                        const response = await fetch('http://localhost:3000/api/firmar-documento', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                idDocumento: docId,
+                                firmaBase64: firmaGuardada,
+                                idFirmante: usuario.DocenteID,
+                                rolFirmanteActual: usuario.Cargo
+                            })
+                        });
+
+                        const result = await response.json();
+                        if (result.success) {
+                            alert("✅ ¡Documento firmado exitosamente!");
+                            window.location.href = 'admin-dashboard.html';
+                        } else {
+                            throw new Error(result.message);
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert("❌ Error: " + error.message);
+                        btnFirmar.disabled = false;
+                        btnFirmar.textContent = "Intentar de nuevo";
+                    }
                 };
+
+                btnIrPerfil.onclick = () => window.location.href = 'admin-perfil.html';
+                btnCancelar.onclick = () => modalError.classList.add('hidden');
             }
         });
     </script>
