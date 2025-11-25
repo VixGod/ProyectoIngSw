@@ -88,48 +88,78 @@
 
     <script src="app.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. Obtener datos de la URL
+document.addEventListener('DOMContentLoaded', () => {
+            // 1. OBTENER DATOS
             const params = new URLSearchParams(window.location.search);
             const docName = decodeURIComponent(params.get('name') || 'Documento');
-            const docPath = decodeURIComponent(params.get('path') || 'Recursos-img/documento-ejemplo-default.png');
+            let docPath = decodeURIComponent(params.get('path') || '');
+            
+            const usuarioStr = localStorage.getItem('usuarioActivo');
+            const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
+            // 2. GENERAR URL DINÁMICA (CORRECCIÓN AQUÍ)
+            // Si es un documento generable (PDF), construimos la URL hacia el backend
+            if (usuario && docPath.includes('Recursos-img') && docName.includes('Constancia')) {
+                // AGREGAMOS: &tipo=${docName} para que el backend sepa qué buscar en la BD
+                docPath = `http://localhost:3000/api/generar-constancia?nombre=${usuario.NombreDocente}&tipo=${docName}`;
+            } else if (!docPath) {
+                docPath = 'Recursos-img/documento-ejemplo-default.png';
+            }
+
+            // 3. RENDERIZAR
             const documentTitleElement = document.getElementById('document-title');
             const documentFrame = document.querySelector('.document-frame'); 
             const requestBtn = document.getElementById('request-doc-btn');
 
-            // 2. Mostrar información
             documentTitleElement.textContent = `Solicitar: ${docName}`;
 
-            // 3. Lógica de Visualización (PDF o Imagen)
-            if (docPath) {
-                const isPdf = docPath.toLowerCase().endsWith('.pdf');
-                
-                if (isPdf) {
-                    // AQUÍ ESTÁ EL CAMBIO: Se agrega #toolbar=0&navpanes=0 para ocultar controles
-                    documentFrame.innerHTML = `
-                        <iframe 
-                            src="${docPath}#toolbar=0&navpanes=0&scrollbar=0" 
-                            width="100%" 
-                            height="100%" 
-                            style="border: none;"
-                        ></iframe>
-                    `;
-                } else {
-                    documentFrame.innerHTML = `
-                        <img class="document-image" src="${docPath}" alt="Vista previa" />
-                    `;
-                }
+            // Visualización (Con ajuste de Zoom y Cache)
+            const urlNoCache = docPath.includes('?') ? `${docPath}&t=${Date.now()}` : `${docPath}?t=${Date.now()}`;
+            
+            if (docPath.toLowerCase().endsWith('.pdf') || docPath.includes('generar-constancia')) {
+                documentFrame.innerHTML = `<iframe src="${urlNoCache}#toolbar=0&navpanes=0&view=FitH" width="100%" height="100%" style="border: none;"></iframe>`;
+            } else {
+                documentFrame.innerHTML = `<img class="document-image" src="${urlNoCache}" alt="Vista previa" />`;
             }
 
-            // 4. Lógica del Botón "Confirmar Solicitud"
-            requestBtn.onclick = () => {
+            // 4. LÓGICA DE CONFIRMACIÓN
+            requestBtn.onclick = async () => {
+                if (!usuario) {
+                    alert("Error: Debes iniciar sesión para solicitar.");
+                    return;
+                }
+
                 const confirmacion = confirm(`¿Estás seguro de que deseas solicitar el documento: "${docName}"?`);
                 
                 if (confirmacion) {
-                    alert("¡Solicitud enviada con éxito! El documento está en proceso de aprobación.");
-                    // Redirigir a la pantalla de 'Mis Documentos'
-                    window.location.href = 'inicio.html'; 
+                    requestBtn.disabled = true;
+                    requestBtn.innerHTML = "Procesando...";
+                    
+                    try {
+                        const response = await fetch('http://localhost:3000/api/solicitar-documento', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                idDocente: usuario.DocenteID,
+                                nombreDocumento: docName
+                            })
+                        });
+
+                        const result = await response.json();
+
+                        if (result.success) {
+                            alert("¡Solicitud enviada a la Base de Datos!");
+                            window.location.href = 'inicio.html'; 
+                        } else {
+                            alert("Error: " + result.message);
+                            requestBtn.disabled = false;
+                            requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
+                        }
+                    } catch (error) {
+                        console.error(error);
+                        alert("Error de conexión al solicitar.");
+                        requestBtn.disabled = false;
+                    }
                 }
             };
         });
