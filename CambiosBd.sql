@@ -157,3 +157,122 @@ SET
 WHERE DocenteID = 1;
 
 GO
+
+-- ===============================================================
+-- 6. NUEVAS COLUMNAS DE VALIDACIÓN (PROMEDIO Y ASISTENCIA)
+-- ===============================================================
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'Docente') AND name = 'PromedioEvaluacion')
+BEGIN
+    ALTER TABLE Docente ADD PromedioEvaluacion DECIMAL(5,2) NULL;
+    ALTER TABLE Docente ADD PorcentajeAsistencia INT NULL;
+    PRINT '   -> Columnas de Promedio y Asistencia agregadas.';
+END
+GO
+
+-- ===============================================================
+-- 7. NUEVAS TABLAS (REPORTES DE ERROR Y EXAMEN PROFESIONAL)
+-- ===============================================================
+
+-- A. Tabla de Reportes (Quejas)
+IF OBJECT_ID('ReportesError', 'U') IS NULL
+BEGIN
+    CREATE TABLE ReportesError (
+        ReporteID INT IDENTITY(1,1) PRIMARY KEY,
+        DocenteID INT NOT NULL,
+        TipoDocumento NVARCHAR(100) NOT NULL,
+        DepartamentoDestino NVARCHAR(50) NOT NULL,
+        MensajeError NVARCHAR(MAX) NOT NULL,
+        RespuestaAdmin NVARCHAR(MAX) NULL,
+        FechaReporte DATETIME DEFAULT GETDATE(),
+        FechaRespuesta DATETIME NULL,
+        Estatus NVARCHAR(20) DEFAULT 'Pendiente',
+        CONSTRAINT FK_Reportes_Docente FOREIGN KEY (DocenteID) REFERENCES Docente(DocenteID)
+    );
+    PRINT '   -> Tabla ReportesError creada.';
+END
+
+-- B. Tabla de Exámenes Profesionales (Para constancia de exención)
+IF OBJECT_ID('ExamenProfesional', 'U') IS NULL
+BEGIN
+    CREATE TABLE ExamenProfesional (
+        ExamenID INT IDENTITY(1,1) PRIMARY KEY,
+        AlumnoNombre NVARCHAR(100) NOT NULL,
+        AlumnoNoControl NVARCHAR(20) NOT NULL,
+        AlumnoCarrera NVARCHAR(100) NOT NULL,
+        AlumnoClave NVARCHAR(20) NOT NULL,
+        OpcionTitulacion NVARCHAR(200) NOT NULL,
+        TituloProyecto NVARCHAR(300) NOT NULL,
+        FechaExamen DATE NOT NULL,
+        LugarCiudad NVARCHAR(50) DEFAULT 'Culiacán, Sinaloa',
+        PresidenteID INT NOT NULL,
+        SecretarioID INT NOT NULL,
+        VocalID INT NOT NULL,
+        CONSTRAINT FK_Examen_Presidente FOREIGN KEY (PresidenteID) REFERENCES Docente(DocenteID),
+        CONSTRAINT FK_Examen_Secretario FOREIGN KEY (SecretarioID) REFERENCES Docente(DocenteID),
+        CONSTRAINT FK_Examen_Vocal FOREIGN KEY (VocalID) REFERENCES Docente(DocenteID)
+    );
+    PRINT '   -> Tabla ExamenProfesional creada.';
+END
+GO
+
+-- ===============================================================
+-- 8. CORRECCIÓN DE 'IDENTITY' EN EXPEDIENTE Y CONVOCATORIA
+-- (Necesario para que el botón 'Obtener' no falle al crear expedientes nuevos)
+-- ===============================================================
+
+-- Solo recreamos si no tienen IDENTITY (Revisión rápida: intentamos borrar y crear)
+-- Primero quitamos la FK de Documentos para poder tocar Expediente
+IF OBJECT_ID('FK_Documentos_Expediente', 'F') IS NOT NULL 
+    ALTER TABLE Documentos DROP CONSTRAINT FK_Documentos_Expediente;
+
+IF OBJECT_ID('Convocatoria', 'U') IS NOT NULL DROP TABLE Convocatoria;
+IF OBJECT_ID('Expediente', 'U') IS NOT NULL DROP TABLE Expediente;
+
+-- Re-creamos Expediente con IDENTITY
+CREATE TABLE Expediente(
+    ExpedienteID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    StatusExp NVARCHAR(10) NOT NULL,
+    FechaReg DATE NULL,
+    DocenteID INT NOT NULL,
+    CONSTRAINT FK_Expediente_Docente FOREIGN KEY (DocenteID) REFERENCES Docente(DocenteID)
+);
+
+-- Re-creamos Convocatoria con IDENTITY
+CREATE TABLE Convocatoria(
+    ConvID INT IDENTITY(1,1) NOT NULL PRIMARY KEY,
+    ConvNombre NVARCHAR (50) NOT NULL,
+    FechaInicioConv DATE NOT NULL,
+    FechaFinConv DATE NOT NULL,
+    StatusConv NVARCHAR (10) NOT NULL,
+    DocenteID INT NOT NULL,
+    ExpedienteID INT NOT NULL,
+    CONSTRAINT FK_Convocatoria_Docente FOREIGN KEY (DocenteID) REFERENCES Docente(DocenteID),
+    CONSTRAINT FK_Convocatoria_Expediente FOREIGN KEY (ExpedienteID) REFERENCES Expediente(ExpedienteID)
+);
+
+-- Restauramos la relación con Documentos
+ALTER TABLE Documentos WITH CHECK 
+ADD CONSTRAINT FK_Documentos_Expediente FOREIGN KEY (ExpedienteID) REFERENCES Expediente(ExpedienteID);
+
+-- Reiniciamos contadores para estar seguros
+DBCC CHECKIDENT ('Documentos', RESEED, 0);
+PRINT '   -> Tablas Expediente y Convocatoria corregidas con IDENTITY.';
+GO
+
+-- ===============================================================
+-- 9. NUEVOS DATOS DE PRUEBA (PARA VALIDACIONES)
+-- ===============================================================
+
+-- A. Actualizar a NORMA REBECA (ID 1) - La alumna estrella (Todo bien)
+UPDATE Docente 
+SET PromedioEvaluacion = 95.5, 
+    PorcentajeAsistencia = 100 
+WHERE DocenteID = 1;
+
+-- B. Crear/Actualizar a VICTORIA (ID 2) - La faltista (85% Asistencia)
+IF NOT EXISTS (SELECT * FROM Docente WHERE DocenteID = 2)
+BEGIN
+    INSERT INTO Docente (DocenteID, NombreDocente, DocenteApePat, DocenteApeMat, DocenteCorreo, DocenteStatus, RFCDocente, CedulaDocente, InstitucionID, DocentePassword, Registro, DepartamentoID, FechaIngreso, CategoriaActual, TipoPlaza, ClavePresupuestal, EfectosDesde) 
+    VALUES (2, 'Victoria Adahi', 'Ontiveros', 'Ramos', 'victoria@itc.mx', 'Activo', 'ORVA200505MNO', '123456', 1, 'SOSpass', 'IT11B716', 2, '2020-01-01', 'ASOCIADO A', 'TIEMPO COMPLETO', 'E3817', '2023-01-01');
+END
+UPDATE Docente SET PromedioEvaluacion = 80.0, PorcentajeAsistencia = 85 WHERE DocenteID = 2;
