@@ -2,40 +2,14 @@
 const { sql, poolPromise } = require('../db');
 const { PDFDocument } = require('pdf-lib');
 
-// --- HELPER: CONVERTIR NÚMEROS A LETRAS ---
-function numeroALetras(num) {
-    const unidades = ['cero', 'un', 'dos', 'tres', 'cuatro', 'cinco', 'seis', 'siete', 'ocho', 'nueve'];
-    const especiales = ['diez', 'once', 'doce', 'trece', 'catorce', 'quince', 'dieciséis', 'diecisiete', 'dieciocho', 'diecinueve'];
-    const decenas = ['', '', 'veinte', 'treinta', 'cuarenta', 'cincuenta', 'sesenta', 'setenta', 'ochenta', 'noventa'];
-
-    if (num < 10) return unidades[num];
-    if (num >= 10 && num < 20) return especiales[num - 10];
-    if (num >= 20 && num < 30) return (num === 20) ? 'veinte' : 'veinti' + unidades[num - 20];
-    if (num >= 30 && num < 100) {
-        const d = Math.floor(num / 10);
-        const u = num % 10;
-        return (u === 0) ? decenas[d] : `${decenas[d]} y ${unidades[u]}`;
-    }
-    if (num === 2024) return "dos mil veinticuatro";
-    if (num === 2025) return "dos mil veinticinco";
-    if (num === 2026) return "dos mil veintiséis";
-    return num.toString();
-}
-
-// Generar la frase legal completa (Ej: "trece días del mes de junio del año dos mil veinticinco")
-function obtenerFechaLegal() {
+// MODIFICADO: Función única para fecha estilo CVU (13 de junio de 2025)
+function obtenerFechaEstiloCVU() {
     const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     const d = new Date();
-    
-    const diaLetra = numeroALetras(d.getDate());
-    const mesNombre = meses[d.getMonth()];
-    const anioLetra = numeroALetras(d.getFullYear());
-
-    // Ajustamos el texto para que encaje gramaticalmente en el espacio "a los _______"
-    return `${diaLetra} días del mes de ${mesNombre} del año ${anioLetra}`;
+    return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
 }
 
-// Fecha corta para la parte superior (13/junio/2025)
+// Mantenemos la corta por si se usa en la cabecera (13/junio/2025)
 function obtenerFechaCorta() {
     const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     const d = new Date();
@@ -43,7 +17,7 @@ function obtenerFechaCorta() {
 }
 
 async function llenarRecurso(fileBytes, data) {
-    console.log("📄 Generando Recurso Digital (Modo Campos)...");
+    console.log("📄 Generando Recurso Digital (Formato Fecha CVU)...");
 
     try {
         const pool = await poolPromise;
@@ -51,7 +25,8 @@ async function llenarRecurso(fileBytes, data) {
 
         // 1. PREPARAR DATOS
         const fechaArriba = obtenerFechaCorta(); 
-        const fechaLegalAbajo = obtenerFechaLegal(); // Texto largo para el campo 'Fecha'
+        const fechaAbajo = obtenerFechaEstiloCVU(); // Ahora usa el formato "13 de junio de 2025"
+        
         const nombreDocente = `${data.NombreDocente} ${data.DocenteApePat} ${data.DocenteApeMat}`.toUpperCase();
 
         // Semestre
@@ -78,7 +53,7 @@ async function llenarRecurso(fileBytes, data) {
         const qSub = await pool.request().query("SELECT TOP 1 * FROM Subdireccion");
         if(qSub.recordset.length) nombreSub = `${qSub.recordset[0].NombreTitular} ${qSub.recordset[0].ApePatTitular} ${qSub.recordset[0].ApeMatTitular}`.toUpperCase();
 
-        // 2. BUSCAR MATERIAS (Multipágina)
+        // 2. BUSCAR MATERIAS
         const queryMaterias = `
             SELECT DISTINCT M.NombreMateria, M.Prog 
             FROM Grupo G 
@@ -88,7 +63,6 @@ async function llenarRecurso(fileBytes, data) {
         `;
         const filasCrudas = (await pool.request().input('id', sql.Int, data.DocenteID).query(queryMaterias)).recordset;
         
-        // Filtro JS para eliminar duplicados
         const materiasUnicas = [];
         const ya = new Set();
         filasCrudas.forEach(f => {
@@ -108,21 +82,20 @@ async function llenarRecurso(fileBytes, data) {
             const pdfTemp = await PDFDocument.load(fileBytes);
             const formTemp = pdfTemp.getForm();
 
-            // Helper "Cazador de Campos"
             const llenar = (id, val) => {
                 const t = String(val).trim();
-                // Busca id exacto, minúsculas, mayúsculas y variantes Text_
                 const vs = [id, id.toLowerCase(), id.toUpperCase(), `Text_${id}`, `${id}_1`];
                 for(const v of vs){ try{ const c = formTemp.getTextField(v); if(c) c.setText(t); }catch(e){} }
             };
 
             // --- LLENADO DE CAMPOS ---
             
-            // 1. Fecha Legal (Abajo) -> En el campo 'Fecha' como pediste
-            llenar('Fecha-let', fechaLegalAbajo); 
-            llenar('FechaLetra', fechaLegalAbajo); // Variante por seguridad
+            // 1. Fecha Abajo (Ahora formato simple)
+            llenar('Fecha', fechaAbajo);      // Intentamos llenar el campo 'Fecha' principal
+            llenar('Fecha-let', fechaAbajo);  // Y sus variantes por si acaso
+            llenar('FechaLetra', fechaAbajo);
 
-            // 2. Fecha Corta (Arriba) -> Si tienes otro campo para esto
+            // 2. Fecha Corta (Arriba)
             llenar('Fecha_Cabecera', fechaArriba); 
             llenar('Fecha_Top', fechaArriba);
 

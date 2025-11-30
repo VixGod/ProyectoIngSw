@@ -198,29 +198,62 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // 6. PESTAÑAS
     const tabs = document.querySelectorAll('.solicitudes-tab, .completados-tab');
+    const line = document.getElementById('dynamic-line');
+
+    // Función matemática para mover la línea
+    function moverLinea(tabActiva) {
+        if (line && tabActiva) {
+            // La línea toma el ancho exacto de la pestaña (offsetWidth)
+            line.style.width = tabActiva.offsetWidth + "px";
+            // La línea se mueve a la distancia izquierda exacta (offsetLeft)
+            line.style.left = tabActiva.offsetLeft + "px";
+        }
+    }
+
     if (tabs.length > 0) {
         tabs.forEach(tab => {
-            tab.addEventListener('click', () => {
+            tab.addEventListener('click', (e) => {
+                // --- A. Lógica Original (Cambiar contenido) ---
                 const targetId = tab.getAttribute('data-target');
                 const targetContent = document.getElementById(targetId);
+                
                 tabs.forEach(t => t.classList.remove('active-tab'));
                 tab.classList.add('active-tab');
+
                 const contentWrapper = document.querySelector('.tab-content-wrapper');
                 if (contentWrapper) {
                     const allContent = contentWrapper.querySelectorAll('.document-list-container');
                     allContent.forEach(content => content.classList.add('hidden'));
                     if (targetContent) targetContent.classList.remove('hidden');
                 }
+
+                // --- B. NUEVA LÓGICA (Mover la línea) ---
+                moverLinea(e.currentTarget);
             });
         });
-        const activeTab = document.querySelector('.sub-nav .active-tab');
-        if (activeTab) {
-            const initialTargetId = activeTab.getAttribute('data-target');
-            const initialContent = document.getElementById(initialTargetId);
-            const allContent = document.querySelectorAll('.document-list-container');
-            allContent.forEach(content => content.classList.add('hidden'));
-            if (initialContent) initialContent.classList.remove('hidden');
+
+        // --- C. Inicialización (Colocar la línea al cargar la página) ---
+        const activeTabInicial = document.querySelector('.sub-nav .active-tab');
+        if (activeTabInicial) {
+            // Usamos un pequeño retraso para asegurar que el CSS haya cargado
+            setTimeout(() => {
+                const targetId = activeTabInicial.getAttribute('data-target');
+                const initialContent = document.getElementById(targetId);
+                
+                const allContent = document.querySelectorAll('.document-list-container');
+                allContent.forEach(content => content.classList.add('hidden'));
+                if (initialContent) initialContent.classList.remove('hidden');
+
+                // Mover la línea a la posición inicial
+                moverLinea(activeTabInicial);
+            }, 100);
         }
+
+        // --- D. Ajuste por si cambian el tamaño de la ventana ---
+        window.addEventListener('resize', () => {
+            const currentActive = document.querySelector('.sub-nav .active-tab');
+            if(currentActive) moverLinea(currentActive);
+        });
     }
 
     // 7. INYECTAR DATOS DE USUARIO
