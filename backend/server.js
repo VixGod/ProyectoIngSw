@@ -5,13 +5,15 @@ const { PDFDocument } = require('pdf-lib');
 const fs = require('fs');
 const path = require('path');
 
-// --- IMPORTACIÓN DE MÓDULOS DE DOCUMENTOS ---
-const { llenarLaboral } = require('./documentos/docLaboral'); 
-const { llenarCVU } = require('./documentos/docCVU'); // <--- NUEVO IMPORT
-
 const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); 
+
+// --- IMPORTACIÓN DE MÓDULOS DE DOCUMENTOS ---
+const { llenarLaboral } = require('./documentos/docLaboral'); 
+const { llenarCVU } = require('./documentos/docCVU'); // <--- NUEVO IMPORT
+require('./documentos/docExencion')(app); // Ruta específica para docExencion
+
 
 // Helper Global de Fechas (Para lo que se use fuera de los módulos)
 function formatearFecha(fecha) {
@@ -121,7 +123,7 @@ app.post('/login', async (req, res) => {
 });
 
 // ==================================================================
-// 2. CATÁLOGO INTELIGENTE (MODIFICADO: Muestra todo, bloquea si falta)
+// 2. CATÁLOGO INTELIGENTE (FUSIONADO: Documentos + Exámenes)
 // ==================================================================
 app.get('/api/catalogo-inteligente', async (req, res) => {
     try {
@@ -130,14 +132,14 @@ app.get('/api/catalogo-inteligente', async (req, res) => {
 
         // 1. DATOS DEL DOCENTE
         const perfilQuery = await pool.request().input('id', idDocente).query("SELECT * FROM Docente WHERE DocenteID = @id");
-        if (perfilQuery.recordset.length === 0) return res.json([]); // Si no existe el usuario, array vacío
+        if (perfilQuery.recordset.length === 0) return res.json([]);
         const perfil = perfilQuery.recordset[0];
 
-        // 2. LISTA DE DOCUMENTOS (SIEMPRE TRAEMOS TODOS)
+        // 2. LISTA DE DOCUMENTOS ESTÁNDAR (Solicitudes)
         const tiposDocs = await pool.request().query("SELECT * FROM TiposDocumento");
         const listaTodos = tiposDocs.recordset;
 
-        // 3. VERIFICACIONES DE ROL (Booleans)
+        // 3. VERIFICACIONES DE ROL
         const qTutor = await pool.request().input('id', idDocente).query("SELECT COUNT(*) as c FROM Tutorados WHERE DocenteID = @id");
         const qGrupo = await pool.request().input('id', idDocente).query("SELECT COUNT(*) as c FROM Grupo WHERE DocenteID = @id");
         const qAdmin = await pool.request().input('id', idDocente).query("SELECT COUNT(*) as c FROM ActividadAdministrativa WHERE DocenteID = @id");
@@ -146,51 +148,55 @@ app.get('/api/catalogo-inteligente', async (req, res) => {
         const tieneGrupos = qGrupo.recordset[0].c > 0;
         const tieneAdmin = qAdmin.recordset[0].c > 0;
 
-        // 4. CONSTRUIR RESPUESTA
         let catalogo = [];
 
+        // --- A. PROCESAR DOCUMENTOS NORMALES ---
         listaTodos.forEach(doc => {
-            let motivoBloqueo = null; // Si es null, está DISPONIBLE. Si tiene texto, está BLOQUEADO.
+            let motivoBloqueo = null;
 
-            // --- A. BLOQUEO POR ROL ---
-            // En lugar de ocultar, bloqueamos el botón y decimos por qué.
-            if (doc.RequiereValidacion === 'Tutorados' && !esTutor) {
-                motivoBloqueo = "Requiere ser Tutor";
-            }
-            else if (doc.RequiereValidacion === 'Grupo' && !tieneGrupos) {
-                motivoBloqueo = "Requiere Grupos";
-            }
-            else if (doc.RequiereValidacion === 'Administrativa' && !tieneAdmin) {
-                motivoBloqueo = "Requiere Act. Admin.";
-            }
-
-            // --- B. BLOQUEO POR DATOS FALTANTES (Constancia Laboral) ---
-            // Solo revisamos esto si no estaba ya bloqueado por rol
+            if (doc.RequiereValidacion === 'Tutorados' && !esTutor) motivoBloqueo = "Requiere ser Tutor";
+            else if (doc.RequiereValidacion === 'Grupo' && !tieneGrupos) motivoBloqueo = "Requiere Grupos";
+            else if (doc.RequiereValidacion === 'Administrativa' && !tieneAdmin) motivoBloqueo = "Requiere Act. Admin.";
+            
+            // Validación de datos faltantes (Ej. Constancia Laboral)
             else if (doc.NombreVisible === 'Constancia Laboral') {
                 let faltantes = [];
                 if (!perfil.RFCDocente) faltantes.push('RFC');
                 if (!perfil.FechaIngreso) faltantes.push('Fecha Ingreso');
                 if (!perfil.ClavePresupuestal) faltantes.push('Clave Presup.');
                 if (!perfil.CategoriaActual) faltantes.push('Categoría');
-                if (!perfil.TipoPlaza) faltantes.push('Plaza'); // Importante para tu PDF
-                
-                if (faltantes.length > 0) {
-                    motivoBloqueo = `Faltan datos: ${faltantes.join(', ')}`;
-                }
+                if (!perfil.TipoPlaza) faltantes.push('Plaza');
+                if (faltantes.length > 0) motivoBloqueo = `Faltan datos: ${faltantes.join(', ')}`;
             }
 
-            // SIEMPRE AGREGAMOS EL DOCUMENTO A LA LISTA
-            // Nunca usamos "continue" o "return" para saltar.
             catalogo.push({
                 id: doc.TipoID,
                 nombre: doc.NombreVisible,
-                ruta: doc.NombreArchivoPDF, 
-                yaSolicitado: false, // Simplificado por ahora para asegurar que salga
-                bloqueadoPorPerfil: motivoBloqueo // Aquí va el mensaje de error o null
+                tipo: 'solicitud', // MARCA: Esto es una solicitud normal
+                bloqueadoPorPerfil: motivoBloqueo
             });
         });
 
-        console.log(`✅ Enviando ${catalogo.length} documentos al Frontend.`);
+        // --- B. PROCESAR EXÁMENES (INYECCIÓN DE EXENCIONES) ---
+        // Buscamos si el profe participó en exámenes
+        const qExamenes = await pool.request().input('id', idDocente).query(`
+            SELECT ExamenID, AlumnoNombre, FechaExamen 
+            FROM ExamenProfesional 
+            WHERE PresidenteID = @id OR SecretarioID = @id OR VocalID = @id
+            ORDER BY FechaExamen DESC
+        `);
+
+        qExamenes.recordset.forEach(examen => {
+            // Creamos un "documento falso" para la lista
+            catalogo.push({
+                id: examen.ExamenID, // Aquí va el ID del examen
+                nombre: `Constancia de Exención - ${examen.AlumnoNombre}`, // Nombre personalizado
+                tipo: 'descarga_directa', // MARCA: Esto es descarga directa
+                bloqueadoPorPerfil: null // Siempre disponible si aparece aquí
+            });
+        });
+
+        // Enviamos la lista mezclada
         res.json(catalogo);
 
     } catch (err) {

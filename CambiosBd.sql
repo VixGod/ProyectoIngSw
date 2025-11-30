@@ -101,17 +101,17 @@ GO
 DBCC CHECKIDENT ('TiposDocumento', RESEED, 0);
 
 INSERT INTO TiposDocumento (NombreVisible, NombreArchivoPDF, RequiereValidacion) VALUES 
-('Constancia Laboral', 'constancia_laboral.pdf', NULL),                                     -- 1
-('Constancia de Tutoría', 'constancia_tutoria.pdf', 'Tutorados'),                             -- 2
-('Constancia de Estrategias Didácticas', 'constancia_estrategias.pdf', 'Grupo'),              -- 3
-('Constancia de Recurso Educativo Digital', 'constancia_recurso_digital.pdf', 'Grupo'),       -- 4
-('Constancia de Créditos (Monitor)', 'constancia_creditos_monitor.pdf', 'Administrativa'),    -- 5
-('Constancia de Exención de Examen Prof.', 'constancia_exencion_examen.pdf', NULL),           -- 6
+('Constancia Laboral', 'constancia_laboral.pdf', NULL),                                     -- 1        01
+('Constancia de Tutoría', 'constancia_tutoria.pdf', 'Tutorados'),                             -- 2      1.1.5.1
+('Constancia de Estrategias Didácticas', 'constancia_estrategias.pdf', 'Grupo'),              -- 3      1.2.1.3
+('Constancia de Recurso Educativo Digital', 'constancia_recurso_digital.pdf', 'Grupo'),       -- 4      1.2.1.1
+('Constancia de Créditos (Monitor)', 'constancia_creditos_monitor.pdf', 'Administrativa'),    -- 5      1.1.7
+('Constancia de Exención de Examen Prof.', 'constancia_exencion_examen.pdf', NULL),           -- 6      1.3.1.1
 ('Carga Académica (Horario)', 'carga_academica.pdf', 'Grupo'),                                -- 7
-('Carta de Exclusividad Laboral', 'carta_exclusividad.pdf', NULL),                            -- 8
-('Acreditación CONAIC', 'acreditacion_conaic.pdf', NULL),                                     -- 9
-('Constancia de CVU', 'constancia_cvu.pdf', NULL),                                            -- 10
-('Constancia de Servicios Escolares', 'constancia_servicios.pdf', NULL);                      -- 11
+('Carta de Exclusividad Laboral', 'carta_exclusividad.pdf', NULL),                            -- 8      04
+('Acreditación CONAIC', 'acreditacion_conaic.pdf', NULL),                                     -- 9      1.1.6
+('Constancia de CVU', 'constancia_cvu.pdf', NULL),                                            -- 10     06
+('Constancia de Servicios Escolares', 'constancia_servicios.pdf', NULL);                      -- 11     07
 
 -- ===============================================================
 -- 4. CONFIGURACIÓN DE RUTAS (QUIÉN FIRMA QUÉ)

@@ -21,7 +21,7 @@ async function llenarCVU(form, data, nombreAdminFirma) {
     // Usamos 'es-MX' para asegurar el formato "24 de noviembre de 2025"
     const fechaTexto = new Date().toLocaleDateString('es-MX', opciones); 
     
-    // 2. LLENADO
+    // 2. LLENADOS
     llenar('nombre', nombreCompleto);
     llenar('registro', data.Registro || 'EN TRÁMITE'); 
     llenar('año_actual', anioEvaluado);
