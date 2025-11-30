@@ -16,6 +16,9 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '50mb' })); 
 
+require('./documentos/docExencion')(app);  // El de la Constancia de Exención
+require('./documentos/docHorarios')(app);
+
 // Helper Global
 function formatearFecha(fecha) {
     if (!fecha) return "Fecha no registrada";
