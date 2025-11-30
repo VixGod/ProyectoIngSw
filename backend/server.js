@@ -7,7 +7,9 @@ const path = require('path');
 
 // --- IMPORTACIÓN DE MÓDULOS DE DOCUMENTOS ---
 const { llenarLaboral } = require('./documentos/docLaboral'); 
-const { llenarCVU } = require('./documentos/docCVU'); // <--- NUEVO IMPORT
+const { llenarCVU } = require('./documentos/docCVU');
+const { llenarEstrategias } = require('./documentos/docEstrategias');
+const { llenarRecurso } = require('./documentos/docRecurso'); // <--- NUEVO IMPORT
 
 const app = express();
 app.use(cors());
@@ -440,13 +442,12 @@ app.get('/api/generar-constancia', async (req, res) => {
         // --- Lógica inline para los demás (puedes modularizarlos después) ---
         
         else if (tipoDocumento.includes('Estrategias')) {
-            const q = await pool.request().input('id', data.DocenteID).query(`SELECT M.NombreMateria, M.Estrategia, M.Prog FROM Grupo G INNER JOIN Materia M ON G.MateriaID = M.MateriaID WHERE G.DocenteID = @id`);
-            q.recordset.forEach((fila, i) => {
-                llenar(`Asignatura${i+1}`, fila.NombreMateria);
-                llenar(`Estrategia${i+1}`, fila.Estrategia || 'Aprendizaje Basado en Proyectos');
-                llenar(`Programa${i+1}`, fila.Prog);
-            });
-            llenar('firma', nombreAdminFirma);
+            await llenarEstrategias(form, data);
+        }
+
+        else if (tipoDocumento.includes('Recurso') || tipoDocumento.includes('Digital')) {
+            // MÓDULO EXTERNO: Recurso Educativo
+            await llenarRecurso(form, data);
         }
 
         else if (tipoDocumento.includes('Tutoría')) {
