@@ -1008,4 +1008,168 @@ body {
     padding: 40px !important;           /* Espacio interno cómodo */
     height: auto !important;            /* Permite scroll si la lista es larga */
     overflow-y: auto !important;        /* Scroll vertical activado */
+
+    /* ====================================================== */
+/* === 15. ESTILOS DE SISTEMA DE REPORTES (NUEVO) === */
+/* ====================================================== */
+
+/* Tabla de Reportes (Docente) */
+.reportes-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    margin-top: 20px;
+    background-color: white;
+    border-radius: 8px;
+    overflow: hidden;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+}
+
+.reportes-table th {
+    background-color: #1B396A; /* Tu azul institucional */
+    color: white;
+    padding: 15px;
+    text-align: left;
+    font-weight: 800;
+}
+
+.reportes-table td {
+    padding: 15px;
+    border-bottom: 1px solid #eee;
+    color: #333;
+}
+
+.reportes-table tr:last-child td {
+    border-bottom: none;
+}
+
+/* Etiquetas de Estado */
+.status-badge {
+    padding: 6px 12px;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 800;
+    text-transform: uppercase;
+    display: inline-block;
+}
+
+.status-pendiente {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+}
+
+/* ESTE ES EL QUE ACABAMOS DE CORREGIR: */
+.status-corregido {
+    background-color: #28a745 !important;
+    color: white !important;
+    border: 1px solid #218838;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+/* Tarjetas de Atención (Admin) */
+.queja-card {
+    background-color: white;
+    border: 1px solid #e0e0e0;
+    border-left: 5px solid #d9534f; /* Borde rojo a la izquierda */
+    border-radius: 8px;
+    padding: 20px;
+    margin-bottom: 20px;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.05);
+}
+
+.queja-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 15px;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+}
+
+.queja-title {
+    font-size: 18px;
+    font-weight: 800;
+    color: #1B396A;
+    margin: 0;
+}
+
+.queja-body {
+    background-color: #fff5f5;
+    padding: 15px;
+    border-radius: 5px;
+    color: #c62828;
+    margin-bottom: 15px;
+}
+
+.respuesta-area {
+    display: flex;
+    gap: 10px;
+}
+
+.input-respuesta {
+    flex-grow: 1;
+    padding: 10px;
+    border: 1px solid #ccc;
+    border-radius: 5px;
+    font-family: inherit;
+}
+
+.btn-resolver {
+    background-color: #28a745;
+    color: white;
+    border: none;
+    padding: 10px 25px;
+    border-radius: 5px;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.btn-resolver:hover { background-color: #218838; }
+}
+
+/* Botón Rojo para Reportar (Estilo de alerta) */
+.report-button {
+    background-color: #d9534f; /* Rojo */
+    color: white;
+    padding: 12px 25px;
+    border: none;
+    border-radius: 5px;
+    font-size: 16px;
+    font-weight: bold;
+    cursor: pointer;
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.3);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    transition: background-color 0.3s ease;
+}
+
+.report-button:hover {
+    background-color: #c9302c; /* Rojo más oscuro al pasar el mouse */
+}
+
+/* Contenedor para alinear los dos botones (Confirmar y Reportar) */
+.action-buttons-wrapper {
+    display: flex;
+    gap: 20px; /* Separación entre los botones */
+    justify-content: flex-end; /* Alinearlos a la derecha (opcional) */
+}
+
+/* Área de texto del Modal de Reporte */
+.modal-textarea {
+    width: 100%;
+    height: 120px;
+    padding: 15px;
+    margin: 20px 0;
+    border-radius: 5px;
+    border: 1px solid #ccc;
+    font-family: inherit; /* Usa la misma fuente que la página */
+    font-size: 14px;
+    resize: none; /* Evita que el usuario cambie el tamaño */
+    box-sizing: border-box; /* Para que el padding no rompa el ancho */
+}
+
+/* Asegurar que el modal esté por encima de todo */
+.modal-overlay {
+    z-index: 9999 !important;
 }

@@ -1,0 +1,191 @@
+/* RESET BÁSICO Y CONFIGURACIÓN GLOBAL */
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Inter, sans-serif;
+    background-color: white; 
+    min-height: 100vh;
+    overflow-x: hidden; 
+}
+
+.main-container {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
+    width: 100%;
+}
+
+/* === HEADER (Barra Superior Azul) === */
+.header {
+    background: #1B396A;
+    color: white;
+    height: 100px; 
+    width: 100%;
+    display: flex;
+    justify-content: space-between; 
+    align-items: center;
+    padding: 0 40px;
+    box-sizing: border-box;
+}
+
+.logo-area {
+    display: flex;
+    align-items: center;
+}
+
+.logo-img {
+    width: 100px; 
+    height: auto;
+    margin-right: 15px;
+}
+
+.header-title {
+    display: flex;
+    flex-direction: column;
+}
+
+.header-title-text {
+    font-size: 36px;
+    font-weight: 800;
+}
+
+.header-subtitle-text {
+    font-size: 16px;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+}
+
+.bienvenida-norma-rebeca {
+    font-size: 24px;
+    font-weight: 800;
+    margin-right: 20px;
+}
+
+/* Nuevos iconos de la cabecera */
+
+.user-icon {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    border: 3px solid white; 
+    padding: 5px;
+}
+
+/* === PAGE CONTENT (Sidebar + Main) === */
+.page-content {
+    flex-grow: 1; 
+    display: flex;
+    width: 100%;
+}
+
+/* === SIDEBAR (Navegación Lateral Izquierda) === */
+.sidebar {
+    width: 120px; 
+    background: white;
+    border-right: 1px solid #ccc; 
+    padding-top: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.nav-item {
+    width: 100%;
+    text-align: center;
+    padding: 15px 0;
+    text-decoration: none;
+    color: black;
+    font-weight: 800;
+    font-size: 14px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    cursor: pointer;
+}
+
+.nav-item.active {
+    background: rgba(217, 217, 217, 0.5); 
+}
+
+.nav-icon {
+    width: 40px;
+    height: 40px;
+    margin-bottom: 5px;
+}
+
+.nav-footer {
+    margin-top: auto; 
+    padding: 20px 0;
+}
+
+/* ======================================= */
+/* === CATÁLOGO DE DOCUMENTOS (NUEVO) === */
+/* ======================================= */
+.content-area.catalog-view {
+    flex-grow: 1; 
+    background: white; 
+    padding: 20px 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: center; /* Centra el contenido horizontalmente */
+}
+
+.catalog-title {
+    font-size: 32px;
+    font-weight: 800;
+    color: #1B396A;
+    margin-bottom: 30px;
+    text-align: center;
+    width: 100%;
+}
+
+.catalog-container {
+    /* Fondo gris tenue que abarca el contenido */
+    background: rgba(27, 57, 106, 0.1); 
+    padding: 30px;
+    border-radius: 5px;
+    width: 80%; /* Ancho máximo para el contenedor del catálogo */
+    max-width: 1200px; /* Limita el crecimiento en pantallas muy grandes */
+}
+
+.catalog-row {
+    background: rgba(27, 57, 106, 0.60); 
+    color: white;
+    margin-bottom: 20px;
+    padding: 15px 30px;
+    height: 80px; /* Altura ajustada */
+    display: flex;
+    justify-content: space-between; /* Mantiene el nombre a la izq y la acción a la der */
+    align-items: center;
+    border-radius: 5px;
+}
+
+.documento-text {
+    font-size: 30px;
+    font-weight: 800;
+}
+
+.action-buttons {
+    display: flex;
+    align-items: center;
+    background-color: rgba(255, 255, 255, 0.2); /* Fondo sutil para el área de acción */
+    padding: 10px 15px;
+    border-radius: 5px;
+    cursor: pointer;
+}
+
+.obtain-text {
+    font-size: 20px;
+    font-weight: 800;
+    margin-right: 15px;
+}
+
+.action-icon {
+    width: 40px;
+    height: 40px;
+    /* Para que el icono se vea blanco o claro */
+    filter: invert(100%) sepia(0%) saturate(7469%) hue-rotate(170deg) brightness(108%) contrast(107%); 
+}

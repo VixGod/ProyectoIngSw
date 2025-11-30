@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DELTA - Mis Reportes</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="Recursos-img/image 9.png" alt="Logo DELTA" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+            <div class="user-info">
+                <span class="bienvenida-norma-rebeca" id="header-username">Cargando...</span>
+                <img class="notification-icon" src="Recursos-img/image 40.png" alt="Icono de Notificación" />
+                
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Icono de Perfil" />
+                </div>
+
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn">
+                        <span style="font-size: 20px; color: #333;">&times;</span>
+                    </button>
+                    
+                    <div class="menu-item" data-href="perfil.html">
+                        <img class="menu-icon" src="Recursos-img/image 31.png" alt="Mi Perfil" />
+                        <span>Mi Perfil</span>
+                    </div>
+                    <div class="menu-item">
+                        <img class="menu-icon" src="Recursos-img/image 32.png" alt="Ayuda y Soporte" />
+                        <span>Ayuda y Soporte</span>
+                    </div>
+                    <div class="menu-item logout">
+                        <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesión" />
+                        <span>Cerrar Sesión</span>
+                    </div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="inicio.html" class="nav-item">
+                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Inicio" />
+                    <span class="nav-text">Inicio</span>
+                </a>
+                <a href="documentos.html" class="nav-item">
+                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Documentos" />
+                    <span class="nav-text">Documentos</span>
+                </a>
+                <a href="mis-reportes.html" class="nav-item active" >
+                    <img class="nav-icon" src="Recursos-img/informe.png" alt="Documentos" />
+                    <span class="nav-text">Mis Reportes</span>
+                </a>
+            </nav>
+
+            <main class="content-area">
+                <h1 style="color: #1B396A; font-weight: 800; margin-bottom: 20px;">Estado de mis Reportes</h1>
+                <div id="reportes-container">
+                    <p>Cargando tus reportes...</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const usuario = JSON.parse(localStorage.getItem('usuarioActivo'));
+            if(!usuario) return;
+
+            const res = await fetch(`http://localhost:3000/api/mis-reportes?id=${usuario.DocenteID}`);
+            const reportes = await res.json();
+            const container = document.getElementById('reportes-container');
+
+            if(reportes.length === 0) {
+                container.innerHTML = '<div style="background:#f0f0f0; padding:30px; text-align:center; border-radius:10px; color:#666;">No has reportado ningún error.</div>';
+                return;
+            }
+
+            let html = '<table class="reportes-table"><thead><tr><th>Fecha</th><th>Documento</th><th>Tu Reporte</th><th>Estatus</th><th>Respuesta Admin</th></tr></thead><tbody>';
+            
+            reportes.forEach(r => {
+                // Lógica mejorada para asegurar el color VERDE
+                let estiloBadge = '';
+                let clase = 'status-pendiente';
+                
+                if (r.Estatus !== 'Pendiente') {
+                    clase = 'status-corregido';
+                    // AQUÍ ESTÁ EL TRUCO: Inyectamos el color directamente (CSS en línea)
+                    // Esto tiene prioridad sobre cualquier archivo externo que esté fallando
+                    estiloBadge = 'background-color: #28a745 !important; color: white !important; border: 1px solid #218838;';
+                }
+
+                const fecha = new Date(r.FechaReporte).toLocaleDateString();
+                
+                html += `
+                    <tr>
+                        <td>${fecha}</td>
+                        <td style="font-weight:bold;">${r.TipoDocumento}</td>
+                        <td>${r.MensajeError}</td>
+                        <td>
+                            <span class="status-badge ${clase}" style="${estiloBadge}">
+                                ${r.Estatus}
+                            </span>
+                        </td>
+                        <td style="color:#1B396A; font-weight:bold;">${r.RespuestaAdmin || 'Esperando respuesta...'}</td>
+                    </tr>
+                `;
+            });
+            html += '</tbody></table>';
+            container.innerHTML = html;
+        });
+    </script>
+</body>
+</html>

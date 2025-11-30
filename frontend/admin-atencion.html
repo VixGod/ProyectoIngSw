@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>DELTA - Atención a Reportes</title>
+    <link rel="stylesheet" href="inicio.css">
+</head>
+<body>
+    <div class="main-container">
+        <header class="header">
+            <div class="logo-area">
+                <img class="logo-img" src="Recursos-img/image 9.png" alt="Logo" />
+                <div class="header-title">
+                    <span class="header-title-text">DELTA</span>
+                    <span class="header-subtitle-text">Obtención de Documentos</span>
+                </div>
+            </div>
+           <div class="user-info">
+                <span class="bienvenida-norma-rebeca" id="header-username">¡Bienvenido!</span>
+                <img class="notification-icon" src="Recursos-img/image 40.png" alt="Notificación" />
+                <div class="profile-container" id="profile-btn">
+                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Perfil" />
+                </div>
+                <div class="profile-menu hidden" id="profile-menu">
+                    <button class="close-btn" id="close-menu-btn"><span style="font-size:20px;">&times;</span></button>
+                    <div class="menu-item" data-href="admin-perfil.html"><span>Mi Perfil</span></div>
+                    <div class="menu-item logout"><span>Cerrar Sesión</span></div>
+                </div>
+            </div>
+        </header>
+
+        <div class="page-content">
+            <nav class="sidebar">
+                <a href="admin-dashboard.html" class="nav-item">
+                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Solicitudes" />
+                    <span class="nav-text">Solicitudes</span>
+                </a>
+                <a href="admin-atencion.html" class="nav-item">
+                    <img class="nav-icon" src="Recursos-img/informe.png" alt="Solicitudes" />
+                    <span class="nav-text">Atención</span>
+                </a>
+            </nav>
+
+            <main class="content-area">
+                <h1 style="color: #1B396A; font-weight: 800; margin-bottom: 20px;">Reportes de Datos Incorrectos</h1>
+                <div id="lista-quejas">
+                    <p>Cargando reportes pendientes...</p>
+                </div>
+            </main>
+        </div>
+    </div>
+
+    <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const usuario = JSON.parse(localStorage.getItem('usuarioActivo'));
+            if(!usuario || usuario.Rol !== 'Administrativo') return;
+
+            const container = document.getElementById('lista-quejas');
+            
+            // Cargar reportes de MI departamento
+            const res = await fetch(`http://localhost:3000/api/reportes-departamento?cargo=${usuario.Cargo}`);
+            const reportes = await res.json();
+
+            let html = '';
+            let pendientes = 0;
+
+            reportes.forEach(r => {
+                if(r.Estatus === 'Corregido') return; // Ocultamos los ya resueltos
+                pendientes++;
+
+                html += `
+                    <div class="queja-card">
+                        <div class="queja-header">
+                            <div>
+                                <h3 class="queja-title">${r.NombreDocente}</h3>
+                                <small style="color:#666;">${new Date(r.FechaReporte).toLocaleDateString()}</small>
+                            </div>
+                            <span style="background:#eee; padding:5px 10px; border-radius:5px; font-size:12px;">${r.TipoDocumento}</span>
+                        </div>
+                        <div class="queja-body">
+                            <strong>El docente reporta:</strong> "${r.MensajeError}"
+                        </div>
+                        <div class="respuesta-area">
+                            <input type="text" class="input-respuesta" id="resp-${r.ReporteID}" placeholder="Escribe la solución (Ej: 'Ya corregí tu fecha de ingreso en el sistema')...">
+                            <button class="btn-resolver" onclick="resolver(${r.ReporteID})">Marcar como Corregido</button>
+                        </div>
+                    </div>
+                `;
+            });
+
+            if(pendientes === 0) {
+                container.innerHTML = '<div style="text-align:center; padding:40px; color:#28a745;"><h3>¡Todo limpio!</h3><p>No tienes reportes de error pendientes.</p></div>';
+            } else {
+                container.innerHTML = html;
+            }
+        });
+
+        async function resolver(id) {
+            const resp = document.getElementById(`resp-${id}`).value;
+            if(!resp) return alert("Por favor escribe una respuesta para el docente.");
+
+            if(confirm("¿Confirmas que ya corregiste el dato en la Base de Datos?")) {
+                await fetch('http://localhost:3000/api/atender-reporte', {
+                    method: 'POST',
+                    headers: {'Content-Type':'application/json'},
+                    body: JSON.stringify({ idReporte: id, respuesta: resp })
+                });
+                alert("Reporte cerrado exitosamente.");
+                location.reload();
+            }
+        }
+    </script>
+</body>
+</html>

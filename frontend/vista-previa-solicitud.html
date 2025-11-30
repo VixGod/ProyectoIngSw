@@ -18,7 +18,7 @@
             </div>
             
             <div class="user-info">
-                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
+                <span class="bienvenida-norma-rebeca" id="header-username">Cargando...</span>
                 <img class="notification-icon" src="Recursos-img/image 40.png" alt="Icono de Notificación" />
                 
                 <div class="profile-container" id="profile-btn">
@@ -39,7 +39,7 @@
                         <span>Ayuda y Soporte</span>
                     </div>
                     <div class="menu-item logout">
-                        <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesiónl" />
+                        <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesión" />
                         <span>Cerrar Sesión</span>
                     </div>
                 </div>
@@ -55,6 +55,10 @@
                 <a href="#" class="nav-item" data-href="documentos.html">
                     <img class="nav-icon" src="Recursos-img/image 5.png" alt="Icono Documentos" />
                     <span class="nav-text">Documentos</span>
+                </a>
+                 <a href="#" class="nav-item active" data-href="mis-reportes.html">
+                    <img class="nav-icon" src="Recursos-img/informe.png" alt="Documentos" />
+                    <span class="nav-text">Quejas</span>
                 </a>
                 <a href="#" class="nav-item nav-footer">
                     <img class="nav-icon" src="Recursos-img/image 8.png" alt="Icono Footer" />
@@ -76,7 +80,12 @@
                         </div>
                 </div>
 
-                <div class="download-button-container">
+                <div class="download-button-container action-buttons-wrapper">
+                    <button class="report-button" id="btn-reportar-error">
+                        <span style="font-size: 20px;">⚠️</span> 
+                        Reportar Dato Incorrecto
+                    </button>
+
                     <button class="request-button" id="request-doc-btn">
                         <span class="check-icon">&#10003;</span> 
                         Confirmar Solicitud
@@ -86,80 +95,209 @@
         </div>
     </div>
 
+    <div class="modal-overlay hidden" id="modal-reporte">
+        <div class="modal-content">
+            <h3 class="modal-title" style="color: #d9534f;">Reportar Error en Datos</h3>
+            <p>Describe qué dato está incorrecto en la vista previa:</p>
+            
+            <textarea id="txt-motivo-error" class="modal-textarea" placeholder="Ejemplo: Mi apellido materno está mal escrito, debería ser..."></textarea>
+            
+            <div class="modal-buttons">
+                <button class="btn-modal-primary" id="btn-enviar-reporte">Enviar Reporte</button>
+                <button class="btn-modal-secondary" id="btn-cancelar-reporte">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
-document.addEventListener('DOMContentLoaded', () => {
-            // 1. OBTENER DATOS
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. OBTENER DATOS DE LA URL
             const params = new URLSearchParams(window.location.search);
             const docName = decodeURIComponent(params.get('name') || 'Documento');
-            let docPath = decodeURIComponent(params.get('path') || '');
+            let docUrl = decodeURIComponent(params.get('path') || '');
             
+            // CAPTURAR EL ERROR SI EXISTE (DE APP.JS)
+            const errorBloqueo = decodeURIComponent(params.get('error') || '');
+
             const usuarioStr = localStorage.getItem('usuarioActivo');
             const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
-            // 2. GENERAR URL DINÁMICA (CORRECCIÓN AQUÍ)
-            // Si es un documento generable (PDF), construimos la URL hacia el backend
-            if (usuario && docPath.includes('Recursos-img') && docName.includes('Constancia')) {
-                // AGREGAMOS: &tipo=${docName} para que el backend sepa qué buscar en la BD
-                docPath = `http://localhost:3000/api/generar-constancia?nombre=${usuario.NombreDocente}&tipo=${docName}`;
-            } else if (!docPath) {
-                docPath = 'Recursos-img/documento-ejemplo-default.png';
-            }
-
-            // 3. RENDERIZAR
+            // Elementos del DOM
             const documentTitleElement = document.getElementById('document-title');
             const documentFrame = document.querySelector('.document-frame'); 
             const requestBtn = document.getElementById('request-doc-btn');
-
-            documentTitleElement.textContent = `Solicitar: ${docName}`;
-
-            // Visualización (Con ajuste de Zoom y Cache)
-            const urlNoCache = docPath.includes('?') ? `${docPath}&t=${Date.now()}` : `${docPath}?t=${Date.now()}`;
+            const reportBtn = document.getElementById('btn-reportar-error');
             
-            if (docPath.toLowerCase().endsWith('.pdf') || docPath.includes('generar-constancia')) {
-                documentFrame.innerHTML = `<iframe src="${urlNoCache}#toolbar=0&navpanes=0&view=FitH" width="100%" height="100%" style="border: none;"></iframe>`;
-            } else {
-                documentFrame.innerHTML = `<img class="document-image" src="${urlNoCache}" alt="Vista previa" />`;
+            // Elementos del Modal
+            const modal = document.getElementById('modal-reporte');
+            const btnEnviarReporte = document.getElementById('btn-enviar-reporte');
+            const btnCancelarReporte = document.getElementById('btn-cancelar-reporte');
+            const txtMotivo = document.getElementById('txt-motivo-error');
+
+            // --- INICIALIZACIÓN ---
+            documentTitleElement.textContent = `Solicitar: ${docName}`;
+            
+            // Estado inicial del botón confirmar: Deshabilitado
+            requestBtn.disabled = true;
+            requestBtn.style.opacity = "0.5";
+            requestBtn.style.cursor = "not-allowed";
+            requestBtn.innerHTML = "Cargando...";
+
+            if (!usuario) {
+                alert("Error: Debes iniciar sesión.");
+                window.location.href = 'login.html';
+                return;
             }
 
-            // 4. LÓGICA DE CONFIRMACIÓN
-            requestBtn.onclick = async () => {
-                if (!usuario) {
-                    alert("Error: Debes iniciar sesión para solicitar.");
-                    return;
-                }
+            // 2. LÓGICA DE BLOQUEO POR DATOS FALTANTES
+            let bloqueoActivo = false;
 
-                const confirmacion = confirm(`¿Estás seguro de que deseas solicitar el documento: "${docName}"?`);
+            if (errorBloqueo && errorBloqueo !== 'null' && errorBloqueo !== '') {
+                bloqueoActivo = true;
                 
-                if (confirmacion) {
-                    requestBtn.disabled = true;
-                    requestBtn.innerHTML = "Procesando...";
-                    
-                    try {
-                        const response = await fetch('http://localhost:3000/api/solicitar-documento', {
-                            method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({
-                                idDocente: usuario.DocenteID,
-                                nombreDocumento: docName
-                            })
-                        });
+                // A) Insertar aviso visual ROJO arriba del documento
+                const alertaDiv = document.createElement('div');
+                alertaDiv.style.cssText = "background-color: #f8d7da; color: #721c24; padding: 15px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #f5c6cb; text-align: center; width: 90%; max-width: 1000px;";
+                alertaDiv.innerHTML = `
+                    <strong>⚠️ Atención: Documento con datos incompletos.</strong><br>
+                    El sistema detectó: <em>${errorBloqueo}</em>.<br>
+                    <span style="font-size:12px;">Por favor, utiliza el botón rojo "Reportar Dato Incorrecto" para solicitar la corrección.</span>
+                `;
+                
+                const container = document.querySelector('.document-viewer-container');
+                container.insertBefore(alertaDiv, documentFrame);
 
-                        const result = await response.json();
+                // B) Deshabilitar permanentemente el botón de Confirmar
+                requestBtn.style.backgroundColor = "#ccc";
+                requestBtn.innerHTML = "Bloqueado por Datos";
+                // Quitamos el ID para evitar clicks accidentales si la lógica fallara
+                requestBtn.id = "btn-disabled-forever";
+            }
 
-                        if (result.success) {
-                            alert("¡Solicitud enviada a la Base de Datos!");
-                            window.location.href = 'inicio.html'; 
+            // 3. CARGAR EL DOCUMENTO
+            if (docUrl) {
+                const urlNoCache = docUrl.includes('?') ? `${docUrl}&t=${Date.now()}` : `${docUrl}?t=${Date.now()}`;
+                
+                try {
+                    const response = await fetch(urlNoCache);
+
+                    if (response.ok) {
+                        // Renderizar
+                        if (docUrl.toLowerCase().includes('.pdf') || docUrl.includes('api/')) {
+                            documentFrame.innerHTML = `<iframe src="${urlNoCache}#toolbar=0&navpanes=0&view=FitH" width="100%" height="100%" style="border: none;"></iframe>`;
                         } else {
-                            alert("Error: " + result.message);
+                            documentFrame.innerHTML = `<img class="document-image" src="${urlNoCache}" alt="Vista previa" />`;
+                        }
+
+                        // SOLO HABILITAR SI NO HAY BLOQUEO
+                        if (!bloqueoActivo) {
+                            requestBtn.disabled = false;
+                            requestBtn.style.opacity = "1";
+                            requestBtn.style.cursor = "pointer";
+                            requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
+                        }
+
+                    } else {
+                        throw new Error(`El servidor respondió: ${response.status}`);
+                    }
+
+                } catch (error) {
+                    console.error("Error cargando documento:", error);
+                    documentFrame.innerHTML = `<p style="color:red; text-align:center;">No se pudo cargar el documento: ${error.message}</p>`;
+                    if(!bloqueoActivo) requestBtn.innerHTML = "❌ Error de Carga";
+                }
+            } else {
+                documentFrame.innerHTML = '<p>No se especificó un documento.</p>';
+            }
+
+            // 4. LÓGICA DE CONFIRMACIÓN (BOTÓN VERDE)
+            if (requestBtn && requestBtn.id === 'request-doc-btn') {
+                requestBtn.onclick = async () => {
+                    if (requestBtn.disabled || bloqueoActivo) return;
+
+                    if (confirm(`¿Estás seguro de que deseas solicitar el documento: "${docName}"?`)) {
+                        requestBtn.disabled = true;
+                        requestBtn.innerHTML = "Procesando...";
+                        
+                        try {
+                            const response = await fetch('http://localhost:3000/api/solicitar-documento', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                    idDocente: usuario.DocenteID,
+                                    nombreDocumento: docName
+                                })
+                            });
+
+                            const result = await response.json();
+
+                            if (result.success) {
+                                alert("¡Solicitud enviada exitosamente!");
+                                window.location.href = 'inicio.html'; 
+                            } else {
+                                alert("Error: " + result.message);
+                                requestBtn.disabled = false;
+                                requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
+                            }
+                        } catch (error) {
+                            alert("Error de conexión.");
                             requestBtn.disabled = false;
                             requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
                         }
-                    } catch (error) {
-                        console.error(error);
-                        alert("Error de conexión al solicitar.");
-                        requestBtn.disabled = false;
                     }
+                };
+            }
+
+            // 5. LÓGICA DE REPORTE (BOTÓN ROJO Y MODAL)
+            
+            // Abrir Modal
+            reportBtn.onclick = () => {
+                modal.classList.remove('hidden');
+                txtMotivo.value = ''; 
+                txtMotivo.focus();
+            };
+
+            // Cerrar Modal
+            btnCancelarReporte.onclick = () => {
+                modal.classList.add('hidden');
+            };
+
+            // Enviar Reporte
+            btnEnviarReporte.onclick = async () => {
+                const motivo = txtMotivo.value.trim();
+                if (!motivo) return alert("Por favor describe el error.");
+
+                btnEnviarReporte.textContent = "Enviando...";
+                btnEnviarReporte.disabled = true;
+
+                try {
+                    const response = await fetch('http://localhost:3000/api/reportar-error', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            idDocente: usuario.DocenteID,
+                            nombreDocumento: docName,
+                            mensaje: motivo
+                        })
+                    });
+
+                    const result = await response.json();
+
+                    if (result.success) {
+                        alert("✅ Reporte enviado correctamente.");
+                        modal.classList.add('hidden');
+                        window.location.href = 'mis-reportes.html'; // Redirigir para que vea su reporte
+                    } else {
+                        alert("Error al enviar reporte: " + result.message);
+                    }
+
+                } catch (error) {
+                    console.error(error);
+                    alert("Error de conexión con el servidor.");
+                } finally {
+                    btnEnviarReporte.textContent = "Enviar Reporte";
+                    btnEnviarReporte.disabled = false;
                 }
             };
         });
