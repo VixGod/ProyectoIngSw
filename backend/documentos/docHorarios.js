@@ -153,7 +153,7 @@ module.exports = function(app) {
             });
 
             // -- TABLA APOYO --
-            let yA = 320; // <--- Bajado de 285 a 260
+            let yA = 321; // <--- Bajado de 285 a 260
             apoyos.forEach(m => {
                 draw(m.nombre.substring(0,40), 30, yA); 
                 draw(m.lunes, 405, yA); draw(m.martes, 455, yA); draw(m.miercoles, 515, yA); 
