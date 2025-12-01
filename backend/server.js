@@ -11,6 +11,7 @@ const { llenarCVU } = require('./documentos/docCVU');
 const { llenarTutoria } = require('./documentos/docTutoria'); 
 const { llenarEstrategias } = require('./documentos/docEstrategias');
 const { llenarRecurso } = require('./documentos/docRecurso');
+const { llenarCreditos } = require('./documentos/docCreditos');
 
 const app = express();
 app.use(cors());
@@ -277,7 +278,9 @@ app.get('/api/generar-constancia', async (req, res) => {
         const tipoDocumento = req.query.tipo;
         const idSolicitud = req.query.idDoc;
 
-        // 1. OBTENER DATOS
+        // ==========================================
+        // 1. OBTENER DATOS DEL USUARIO (Igual que antes)
+        // ==========================================
         let data = null;
         if (idSolicitud && idSolicitud !== 'undefined' && idSolicitud !== '0') {
             const queryPorID = `SELECT D.* FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID INNER JOIN Docente D ON Exp.DocenteID = D.DocenteID WHERE Doc.DocumentoID = @docId`;
@@ -292,46 +295,71 @@ app.get('/api/generar-constancia', async (req, res) => {
             data = result.recordset[0];
         }
 
-        // 2. CARGAR PDF BASE
-        const fileQuery = await pool.request().input('nombreDoc', tipoDocumento).query("SELECT NombreArchivoPDF FROM TiposDocumento WHERE NombreVisible = @nombreDoc");
-        if (fileQuery.recordset.length === 0) return res.status(404).send(`Documento no configurado.`);
+        let pdfDoc = null;
+        let form = null;
+
+        // ==========================================
+        // 2. SELECCIÓN DE ESTRATEGIA DE GENERACIÓN
+        // ==========================================
         
-        let archivoPDF = fileQuery.recordset[0].NombreArchivoPDF;
-        const rutaPDF = path.join(__dirname, '..', 'frontend', 'Recursos-img', archivoPDF); 
+        // CASO A: DOCUMENTOS GENERADOS DESDE CERO (SIN PLANTILLA)
+        if (tipoDocumento.includes('Créditos') || tipoDocumento.includes('Monitor')) {
+            // Llamamos a tu nueva función. Pasamos null en el primer parametro porque no hay plantilla base
+            // Pasamos 'pool' porque docCreditos hace una consulta interna
+            pdfDoc = await llenarCreditos(null, data, pool);
+        }
         
-        if (!fs.existsSync(rutaPDF)) return res.status(404).send(`Archivo base ${archivoPDF} no encontrado.`);
-        const fileBytes = fs.readFileSync(rutaPDF);
+        // CASO B: DOCUMENTOS BASADOS EN PLANTILLA (Lógica anterior)
+        else {
+            const fileQuery = await pool.request().input('nombreDoc', sql.NVarChar, tipoDocumento).query("SELECT NombreArchivoPDF FROM TiposDocumento WHERE NombreVisible = @nombreDoc");
+            
+            if (fileQuery.recordset.length === 0) return res.status(404).send(`Documento no configurado en BD.`);
+            
+            let archivoPDF = fileQuery.recordset[0].NombreArchivoPDF;
+            const rutaPDF = path.join(__dirname, '..', 'frontend', 'Recursos-img', archivoPDF); 
+            
+            if (!fs.existsSync(rutaPDF)) return res.status(404).send(`Archivo base ${archivoPDF} no encontrado.`);
+            
+            const fileBytes = fs.readFileSync(rutaPDF);
+            pdfDoc = await PDFDocument.load(fileBytes);
+            
+            // Intentamos obtener el form (solo existe en plantillas editables)
+            try { form = pdfDoc.getForm(); } catch(e) {}
 
-        let pdfDoc = await PDFDocument.load(fileBytes);
-        let form = pdfDoc.getForm();
-
-        // 3. LLENADO ESPECÍFICO
-        let nombreAdminFirma = ""; 
-
-        if (tipoDocumento === 'Constancia Laboral') {
-            const qRH = await pool.request().query("SELECT TOP 1 NombreTitular, ApePatTitular, ApeMatTitular FROM RH");
-            if (qRH.recordset.length > 0) {
-                const rh = qRH.recordset[0];
-                nombreAdminFirma = `${rh.NombreTitular} ${rh.ApePatTitular} ${rh.ApeMatTitular}`.toUpperCase();
+            // Llenado específico de plantillas
+            if (tipoDocumento === 'Constancia Laboral') {
+                let nombreAdminFirma = ""; 
+                const qRH = await pool.request().query("SELECT TOP 1 NombreTitular, ApePatTitular, ApeMatTitular FROM RH");
+                if (qRH.recordset.length > 0) {
+                    const rh = qRH.recordset[0];
+                    nombreAdminFirma = `${rh.NombreTitular} ${rh.ApePatTitular} ${rh.ApeMatTitular}`.toUpperCase();
+                }
+                await llenarLaboral(form, data, nombreAdminFirma);
+            } 
+            else if (tipoDocumento.includes('CVU')) await llenarCVU(form, data);
+            else if (tipoDocumento.includes('Tutoría')) await llenarTutoria(form, data, pool);
+            else if (tipoDocumento.includes('Estrategias')) {
+                const docMulti = await llenarEstrategias(fileBytes, data);
+                if (docMulti) pdfDoc = docMulti;
+            } 
+            else if (tipoDocumento.includes('Recurso')) {
+                const docMulti = await llenarRecurso(fileBytes, data);
+                if (docMulti) pdfDoc = docMulti;
             }
-            await llenarLaboral(form, data, nombreAdminFirma);
-        } 
-        else if (tipoDocumento.includes('CVU')) await llenarCVU(form, data, nombreAdminFirma);
-        else if (tipoDocumento.includes('Tutoría')) await llenarTutoria(form, data, pool);
-        else if (tipoDocumento.includes('Estrategias')) {
-            const docMultiPagina = await llenarEstrategias(fileBytes, data);
-            if (docMultiPagina) { pdfDoc = docMultiPagina; try { form = pdfDoc.getForm(); } catch(e) {} }
-        } else if (tipoDocumento.includes('Recurso') || tipoDocumento.includes('Digital')) {
-            const docMultiRecurso = await llenarRecurso(fileBytes, data);
-            if (docMultiRecurso) { pdfDoc = docMultiRecurso; try { form = pdfDoc.getForm(); } catch(e) {} }
+
+            // Aplanamos el formulario si existe
+            try { if(form) form.flatten(); } catch(e) {}
         }
 
-        // 4. ESTAMPADO DE FIRMAS
+        // ==========================================
+        // 3. ESTAMPADO DE FIRMAS (Común para todos)
+        // ==========================================
         if (idSolicitud && idSolicitud !== '0') {
-            const resFirma = await pool.request().input('docId', idSolicitud).query("SELECT FirmaImagen, TipoFirmante FROM Firma WHERE DocumentoID = @docId ORDER BY FechaFirma ASC");
+            const resFirma = await pool.request().input('docId', sql.Int, idSolicitud).query("SELECT FirmaImagen, TipoFirmante FROM Firma WHERE DocumentoID = @docId ORDER BY FechaFirma ASC");
             
             if (resFirma.recordset.length > 0) {
                 const pages = pdfDoc.getPages();
+                // Nota: docCreditos tiene 1 sola página, pero el loop funciona igual
                 for (const page of pages) {
                     for (const f of resFirma.recordset) {
                         if (f.FirmaImagen) {
@@ -340,19 +368,26 @@ app.get('/api/generar-constancia', async (req, res) => {
                                 const dims = pngImage.scaleToFit(130, 50); 
                                 let x = 0, y = 0; 
 
-                                if (tipoDocumento.includes('Estrategias') || tipoDocumento.includes('Recurso') || tipoDocumento.includes('Digital')) {
-                                    if (f.TipoFirmante === 'JefaDepartamento') x = 260, y=330; 
-                                    else if (f.TipoFirmante === 'PresidenteAcademia') x = 140, y=260;
-                                    else if (f.TipoFirmante === 'Subdireccion') x = 420, y=255; 
+                                // COORDENADAS PARA CRÉDITOS
+                                if (tipoDocumento.includes('Créditos') || tipoDocumento.includes('Monitor')) {
+                                    if (f.TipoFirmante === 'ResponsableArea') { x = 100; y = 140; } // Izquierda (Jefe Area)
+                                    else if (f.TipoFirmante === 'Subdireccion') { x = 400; y = 140; } // Derecha
+                                }
+                                // COORDENADAS EXISTENTES
+                                else if (tipoDocumento.includes('Estrategias') || tipoDocumento.includes('Recurso')) {
+                                    if (f.TipoFirmante === 'JefaDepartamento') { x = 260; y=330; }
+                                    else if (f.TipoFirmante === 'PresidenteAcademia') { x = 140; y=260; }
+                                    else if (f.TipoFirmante === 'Subdireccion') { x = 420; y=255; }
                                 }
                                 else if (tipoDocumento.includes('Tutoría')) {
-                                    if (f.TipoFirmante === 'DesarrolloAcademico') x = 80, y=260;
-                                    else if (f.TipoFirmante === 'Subdireccion') x = 405, y=260; 
+                                    if (f.TipoFirmante === 'DesarrolloAcademico') { x = 80; y=260; }
+                                    else if (f.TipoFirmante === 'Subdireccion') { x = 405; y=260; }
                                 }
-                                else if (tipoDocumento.includes('Laboral')) { x = 100, y=280; } 
-                                else { x = 100, y=300; }
+                                else if (tipoDocumento.includes('Laboral')) { x = 100; y=280; } 
+                                else { x = 100; y=300; } // Default
 
                                 if (x > 0) {
+                                    // Ajuste para centrar firma sobre la línea
                                     const xCentrado = x + (100 - dims.width) / 2;
                                     page.drawImage(pngImage, { x: xCentrado, y: y, width: dims.width, height: dims.height });
                                 }
@@ -362,8 +397,6 @@ app.get('/api/generar-constancia', async (req, res) => {
                 }
             }
         }
-
-        try { if(form) form.flatten(); } catch(e) {}
         
         const pdfBytesFinal = await pdfDoc.save();
         res.setHeader('Content-Type', 'application/pdf');
@@ -371,7 +404,6 @@ app.get('/api/generar-constancia', async (req, res) => {
 
     } catch (err) { console.error(err); res.status(500).send("Error: " + err.message); }
 });
-
 // ==================================================================
 // 7. GUARDAR FIRMA DE PERFIL (ADMIN)
 // ==================================================================

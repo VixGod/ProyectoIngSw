@@ -140,24 +140,27 @@ document.addEventListener('DOMContentLoaded', async () => {
     window.irAVistaPrevia = (nombre, ruta, idDoc) => {
         let urlBackend = '';
         
+        // 1. CASO HORARIOS (Usa su propia ruta de descarga)
         if (nombre.includes('Horarios de labores')) {
             urlBackend = `http://localhost:3000/api/descargar/horarios/${usuario.DocenteID}`;
         }
-        else if (nombre.includes('Constancia de Créditos')) {
-            urlBackend = `http://localhost:3000/api/descargar/creditos/${usuario.DocenteID}`;
-        }
+        // 2. CASO EXENCIÓN (Usa su propia ruta de descarga)
         else if (nombre.includes('Constancia de Exención')) {
             urlBackend = `http://localhost:3000/api/descargar/exencion/${idDoc}`;
         }
+        // 3. ARCHIVOS ESTÁTICOS (Se abren directo de la carpeta Recursos-img)
         else if (nombre.includes('Convocatoria') || nombre.includes('Acreditación')) {
              urlBackend = `Recursos-img/${ruta}`;
              window.open(urlBackend, '_blank');
              return; 
         }
+        // 4. GENERADOR UNIVERSAL (Aquí entra Créditos, Laboral, Tutoría, etc.)
         else {
-            urlBackend = `http://localhost:3000/api/generar-constancia?tipo=${encodeURIComponent(nombre)}&idUsuario=${usuario.DocenteID}`;
+            // Nota: Agregamos || 0 en idDoc para evitar 'undefined' en la URL
+            urlBackend = `http://localhost:3000/api/generar-constancia?tipo=${encodeURIComponent(nombre)}&idUsuario=${usuario.DocenteID}&idDoc=${idDoc || 0}`;
         }
 
+        // Redireccionar a la página de vista previa con la URL construida
         window.location.href = `vista-previa-solicitud.html?name=${encodeURIComponent(nombre)}&path=${encodeURIComponent(urlBackend)}`;
     };
 
