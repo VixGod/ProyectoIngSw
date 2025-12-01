@@ -1,215 +1,241 @@
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
     
     // 1. OBTENER USUARIO LOGUEADO
-    const usuarioStr = localStorage.getItem('usuarioActivo');
-    if (!usuarioStr) {
-        window.location.href = 'login.html';
-        return;
-    }
-    const usuario = JSON.parse(usuarioStr);
-    
-    // Actualizar Header
-    const headerName = document.getElementById('header-username');
-    if (headerName) {
-        const nombreMostrar = usuario.NombreDocente || usuario.DirectorNombre || usuario.NombreTitular || 'Usuario';
-        headerName.textContent = `¡Hola, ${nombreMostrar}!`;
+    const usuarioGuardado = localStorage.getItem('usuarioActivo');
+    let usuario = null;
+    if (usuarioGuardado) {
+        try { usuario = JSON.parse(usuarioGuardado); } catch (e) { console.error("Error al leer usuario:", e); }
     }
 
-    // 2. DETECTAR PÁGINA
-    const path = window.location.pathname;
-
-    if (path.includes('inicio.html')) {
-        await cargarMisDocumentos(usuario.DocenteID, 'Pendiente', 'solicitudes-content');
-        await cargarMisDocumentos(usuario.DocenteID, 'Firmado', 'completados-content');
-    }
-    
-    if (path.includes('documentos.html')) {
-        await cargarCatalogo(usuario.DocenteID);
-    }
-
-    // 3. LOGICA DE MIS DOCUMENTOS (Página de Inicio)
-    async function cargarMisDocumentos(idUsuario, status, containerId) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
+    // 2. CARGAR CATÁLOGO INTELIGENTE (ACTUALIZADO)
+    async function cargarCatalogo() {
+        const container = document.querySelector('.catalog-container');
+        
+        // Si no existe el contenedor (estamos en otra página) o es admin, no hacemos nada
+        if (!container || !usuario || usuario.Rol === 'Administrativo') return; 
 
         try {
-            // 1. Obtener documentos (El Backend YA incluye los exámenes si status es 'Firmado')
-            const response = await fetch(`http://localhost:3000/api/mis-documentos?id=${idUsuario}&status=${status}&rol=${usuario.Rol || 'Docente'}`);
-            let documentos = await response.json();
+            const response = await fetch(`http://localhost:3000/api/catalogo-inteligente?id=${usuario.DocenteID}`);
+            const documentos = await response.json();
 
-            // --- ELIMINADO EL BLOQUE DE INYECCIÓN MANUAL PARA EVITAR DUPLICADOS --- 
-            // El servidor ya nos manda la lista completa.
+            let html = '';
 
             if (documentos.length === 0) {
-                container.innerHTML = `<p style="color: white; text-align:center; margin-top: 20px;">No tienes documentos ${status.toLowerCase()}s.</p>`;
-                return;
+                html = '<p style="text-align:center; font-size: 18px; color: #666; padding: 20px;">No se encontraron documentos disponibles.</p>';
+            } else {
+                documentos.forEach(doc => {
+                    const encodedName = encodeURIComponent(doc.nombre);
+                    
+                    // CAMBIO IMPORTANTE: Usamos la API para previsualizar lleno
+                    let rutaApi = `http://localhost:3000/api/generar-constancia?nombre=${encodeURIComponent(usuario.NombreDocente)}&tipo=${encodeURIComponent(doc.nombre)}&idDoc=0`;
+                    
+                    // Excepción para documentos estáticos
+                    if (doc.nombre.includes('Convocatoria') || doc.nombre.includes('Acreditación')) {
+                         rutaApi = `Recursos-img/${doc.ruta}`;
+                    }
+                    
+                    const encodedPath = encodeURIComponent(rutaApi);
+                    let botonAccion = '';
+
+                    // --- CASO 1: BLOQUEADO PERO PERMITIMOS ENTRAR PARA REPORTAR (AMARILLO) ---
+                    if (doc.bloqueadoPorPerfil) {
+                        // Codificamos el error para pasarlo a la siguiente página
+                        const errorMsg = encodeURIComponent(doc.bloqueadoPorPerfil);
+                        
+                        botonAccion = `
+                            <a href="vista-previa-solicitud.html?name=${encodedName}&path=${encodedPath}&error=${errorMsg}" 
+                               class="action-buttons warning-btn" 
+                               style="text-decoration: none; background-color: #f0ad4e; border: 1px solid #eea236; min-width: 160px; justify-content: center;">
+                                <div style="display:flex; flex-direction:column; align-items:center; line-height: 1.2; width:100%;">
+                                    <span class="obtain-text" style="color: white; font-size: 14px; font-weight: 800; margin:0;">REVISAR</span>
+                                    <span style="color: #fff; font-size: 10px;">Faltan Datos</span>
+                                </div>
+                                <span style="font-size: 20px; margin-left: 8px; color: white;">⚠️</span>
+                            </a>
+                        `;
+                    } 
+                    // --- CASO 2: YA SOLICITADO (Gris Neutro - No Clicable) ---
+                    else if (doc.yaSolicitado) {
+                        botonAccion = `
+                            <div class="action-buttons" 
+                                 style="background-color: #cccccc; border: 1px solid #999; cursor: default;">
+                                <span class="obtain-text" style="color: #555; font-weight:bold;">Solicitado</span>
+                                <span style="font-size: 20px; margin-left: 10px; filter: grayscale(100%);">✅</span>
+                            </div>
+                        `;
+                    } 
+                    // --- CASO 3: DISPONIBLE (Azul - Clicable) ---
+                    else {
+                        botonAccion = `
+                            <a href="vista-previa-solicitud.html?name=${encodedName}&path=${encodedPath}" class="action-buttons" style="text-decoration: none; color: inherit;">
+                                <span class="obtain-text">Obtener</span>
+                                <img class="action-icon" src="Recursos-img/image 36.png" alt="Solicitar" />
+                            </a>
+                        `;
+                    }
+
+                    html += `
+                    <div class="catalog-row">
+                        <span class="documento-text">${doc.nombre}</span>
+                        ${botonAccion}
+                    </div>`;
+                });
             }
-
-            let html = '';
-            documentos.forEach(doc => {
-                const fecha = new Date(doc.FechaDoc).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
-                const icono = status === 'Pendiente' ? 'Recursos-img/image 20.png' : 'Recursos-img/image 21.png'; 
-
-                if (doc.EsExamen) {
-                    // CASO A: ES UN EXAMEN
-                    html += `
-                    <div class="clickable-document" onclick="verExamenPDF(${doc.DocumentoID})" style="cursor: pointer;">
-                        <div class="document-row">
-                            <div class="document-details">
-                                <span class="documento-text">${doc.TipoDoc}</span>
-                                <span class="document-date">Clic para visualizar Constancia (PDF)</span>
-                            </div>
-                            <img class="time-icon" src="${icono}" alt="Listo" />
-                        </div>
-                    </div>`;
-                } else {
-                    // CASO B: DOCUMENTO NORMAL
-                    const onclickStr = `irAVistaPrevia('${doc.TipoDoc}', '', ${doc.DocumentoID})`;
-                    html += `
-                    <div class="clickable-document" onclick="${onclickStr}" style="cursor: pointer;">
-                        <div class="document-row">
-                            <div class="document-details">
-                                <span class="documento-text">${doc.TipoDoc}</span>
-                                <span class="document-date">${fecha}</span>
-                            </div>
-                            <img class="time-icon" src="${icono}" alt="Estado" />
-                        </div>
-                    </div>`;
-                }
-            });
             container.innerHTML = html;
 
         } catch (error) {
-            console.error("Error cargando documentos:", error);
-            container.innerHTML = '<p style="color: white;">Error de conexión.</p>';
+            console.error("Error cargando catálogo:", error);
+            container.innerHTML = '<p style="text-align:center; color:red; padding: 20px;">Error de conexión al cargar el catálogo.</p>';
         }
     }
 
-    // 4. LOGICA DEL CATÁLOGO
-    async function cargarCatalogo(idUsuario) {
-        const container = document.querySelector('.catalog-container');
-        if (!container) return;
-
-        try {
-            const response = await fetch(`http://localhost:3000/api/catalogo-inteligente?id=${idUsuario}`);
-            const catalogoRaw = await response.json();
-            // Filtro para no mostrar exámenes en el catálogo de solicitudes
-            const catalogo = catalogoRaw.filter(item => item.tipo !== 'descarga_directa');
-
-            if (catalogo.length === 0) {
-                container.innerHTML = '<p style="text-align:center; color: white;">No hay documentos disponibles.</p>';
-                return;
-            }
-
-            let html = '';
-            catalogo.forEach(item => {
-                let clickAction = '';
-                let textoBoton = 'Obtener';
-                let estiloExtra = ''; 
-                
-                if (item.bloqueadoPorPerfil) {
-                    clickAction = `alert('Bloqueado: ${item.bloqueadoPorPerfil}')`;
-                    textoBoton = 'Bloqueado';
-                    estiloExtra = 'opacity: 0.5; cursor: not-allowed;';
-                } else {
-                    clickAction = `irAVistaPrevia('${item.nombre}', '${item.ruta || ''}', ${item.id})`;
-                }
-
-                html += `
-                <div class="catalog-row" style="${item.bloqueadoPorPerfil ? 'opacity: 0.5;' : ''}">
-                    <span class="documento-text" style="font-size: 24px;">${item.nombre}</span>
-                    <div class="action-buttons" onclick="${clickAction}" style="cursor: pointer; ${estiloExtra}">
-                        <span class="obtain-text">${textoBoton}</span>
-                        <img class="action-icon" src="Recursos-img/image 36.png" alt="Ver" />
-                    </div>
-                </div>`;
-            });
-            container.innerHTML = html;
-
-        } catch (error) {
-            console.error("Error:", error);
-            container.innerHTML = '<p style="color: white;">Error cargando catálogo.</p>';
-        }
-    }
-
-    // 5. FUNCIONES GLOBALES
-    window.verExamenPDF = (idExamen) => {
-        window.open(`http://localhost:3000/api/descargar/exencion/${idExamen}`, '_blank');
-    };
-
-    window.irAVistaPrevia = (nombre, ruta, idDoc) => {
-        let urlBackend = '';
+    // 3. CARGAR MIS DOCUMENTOS (Pendientes y Completados)
+    async function cargarMisDocumentos() {
+        const containerPendientes = document.getElementById('solicitudes-content') || document.getElementById('pendientes-content');
+        const containerCompletados = document.getElementById('completados-content') || document.getElementById('completados-admin-content');
         
-        // 1. CASO HORARIOS (Usa su propia ruta de descarga)
-        if (nombre.includes('Horarios de labores')) {
-            urlBackend = `http://localhost:3000/api/descargar/horarios/${usuario.DocenteID}`;
+        if (!usuario) return;
+
+        const esAdmin = (usuario.Rol === 'Administrativo');
+        const pageLink = esAdmin ? 'admin-visualizar.html' : 'visualizar-documento.html';
+
+        const renderRows = (docs, icono, linkPage) => {
+            if (!docs || docs.length === 0) return '<p style="color:#666; text-align:center; padding:20px;">No hay documentos en esta sección.</p>';
+            
+            return docs.map(doc => {
+                const fecha = new Date(doc.FechaDoc).toLocaleDateString('es-MX');
+                const encodedName = encodeURIComponent(doc.TipoDoc);
+                
+                let nombreDocenteParaPDF = usuario.NombreDocente;
+                let tipoDocLimpio = doc.TipoDoc;
+
+                if (doc.TipoDoc.includes(' - ')) {
+                    const partes = doc.TipoDoc.split(' - ');
+                    tipoDocLimpio = partes[0].trim();
+                    nombreDocenteParaPDF = partes[1].trim();
+                }
+
+                const path = `http://localhost:3000/api/generar-constancia?nombre=${encodeURIComponent(nombreDocenteParaPDF)}&tipo=${encodeURIComponent(tipoDocLimpio)}&idDoc=${doc.DocumentoID}`; 
+                const encodedPath = encodeURIComponent(path);
+
+                return `
+                <a href="${linkPage}?id=${doc.DocumentoID}&name=${encodedName}&path=${encodedPath}&status=${doc.StatusDoc}" class="document-row clickable-document searchable-item">
+                    <div class="document-details">
+                        <span class="documento-text" title="${doc.TipoDoc}">${doc.TipoDoc}</span>
+                        <span class="document-date">${fecha}</span>
+                    </div>
+                    <img class="complete-icon" src="Recursos-img/${icono}" alt="Estado" />
+                </a>`;
+            }).join('');
+        };
+
+        if (containerPendientes) {
+            try {
+                const res = await fetch(`http://localhost:3000/api/mis-documentos?id=${usuario.DocenteID}&status=Pendiente&rol=${usuario.Rol}&cargo=${usuario.Cargo}`);
+                const docs = await res.json();
+                containerPendientes.innerHTML = renderRows(docs, 'image 20.png', pageLink); 
+            } catch (e) { console.error(e); }
         }
-        // 2. CASO EXENCIÓN (Usa su propia ruta de descarga)
-        else if (nombre.includes('Constancia de Exención')) {
-            urlBackend = `http://localhost:3000/api/descargar/exencion/${idDoc}`;
+
+        if (containerCompletados) {
+            try {
+                const res = await fetch(`http://localhost:3000/api/mis-documentos?id=${usuario.DocenteID}&status=Firmado&rol=${usuario.Rol}&cargo=${usuario.Cargo}`);
+                const docs = await res.json();
+                const docsFiltrados = docs.filter(d => d.StatusDoc === 'Firmado' || d.StatusDoc === 'Completado');
+                containerCompletados.innerHTML = renderRows(docsFiltrados, 'image 21.png', pageLink); 
+            } catch (e) { console.error(e); }
         }
-        // 3. ARCHIVOS ESTÁTICOS (Se abren directo de la carpeta Recursos-img)
-        else if (nombre.includes('Convocatoria') || nombre.includes('Acreditación')) {
-             urlBackend = `Recursos-img/${ruta}`;
-             window.open(urlBackend, '_blank');
-             return; 
-        }
-        // 4. GENERADOR UNIVERSAL (Aquí entra Créditos, Laboral, Tutoría, etc.)
-        else {
-            // Nota: Agregamos || 0 en idDoc para evitar 'undefined' en la URL
-            urlBackend = `http://localhost:3000/api/generar-constancia?tipo=${encodeURIComponent(nombre)}&idUsuario=${usuario.DocenteID}&idDoc=${idDoc || 0}`;
-        }
-
-        // Redireccionar a la página de vista previa con la URL construida
-        window.location.href = `vista-previa-solicitud.html?name=${encodeURIComponent(nombre)}&path=${encodeURIComponent(urlBackend)}`;
-    };
-
-    // --- UI ---
-    const navItems = document.querySelectorAll('.nav-item');
-    navItems.forEach(nav => {
-        nav.addEventListener('click', (e) => {
-            const href = nav.getAttribute('data-href');
-            if(href && !window.location.href.includes(href)) window.location.href = href;
-        });
-    });
-
-    const tabs = document.querySelectorAll('.solicitudes-tab, .completados-tab');
-    tabs.forEach(tab => {
-        tab.addEventListener('click', () => {
-            tabs.forEach(t => t.classList.remove('active-tab'));
-            tab.classList.add('active-tab');
-            const targetId = tab.getAttribute('data-target');
-            document.getElementById('solicitudes-content').classList.add('hidden');
-            document.getElementById('completados-content').classList.add('hidden');
-            document.getElementById(targetId).classList.remove('hidden');
-        });
-    });
-
-    const profileBtn = document.getElementById('profile-btn');
-    const profileMenu = document.getElementById('profile-menu');
-    const closeMenu = document.getElementById('close-menu-btn');
-    const logoutBtn = document.querySelector('.logout');
-
-    if(profileBtn && profileMenu) {
-        profileBtn.addEventListener('click', (e) => { e.stopPropagation(); profileMenu.classList.toggle('hidden'); });
-        if(closeMenu) closeMenu.addEventListener('click', (e) => { e.stopPropagation(); profileMenu.classList.add('hidden'); });
-        document.addEventListener('click', () => profileMenu.classList.add('hidden'));
-    }
-
-    if(logoutBtn) {
-        logoutBtn.addEventListener('click', () => {
-            localStorage.removeItem('usuarioActivo');
-            window.location.href = 'login.html';
-        });
     }
     
+    cargarCatalogo();
+    cargarMisDocumentos();
+
+    // 4. GESTIÓN DE NAVEGACIÓN
+    const navItems = document.querySelectorAll('.sidebar .nav-item');
+    navItems.forEach(item => {
+        item.addEventListener('click', (event) => {
+            const targetPage = item.getAttribute('data-href');
+            if (targetPage && targetPage !== '#') {
+                event.preventDefault();
+                if (window.location.pathname.indexOf(targetPage) === -1) window.location.href = targetPage;
+            }
+        });
+    });
+
+    // 5. MENÚ PERFIL
+    const profileBtn = document.getElementById('profile-btn'); 
+    const profileMenu = document.getElementById('profile-menu'); 
+    const closeMenuBtn = document.getElementById('close-menu-btn'); 
+    const menuItems = document.querySelectorAll('#profile-menu .menu-item');
+
+    function toggleProfileMenu() { if (profileMenu) profileMenu.classList.toggle('hidden'); }
+
+    if (profileBtn) profileBtn.addEventListener('click', (e) => { e.stopPropagation(); toggleProfileMenu(); });
+    if (closeMenuBtn) closeMenuBtn.addEventListener('click', (e) => { e.stopPropagation(); if (profileMenu) profileMenu.classList.add('hidden'); });
+
+    menuItems.forEach(item => {
+        item.addEventListener('click', () => {
+            const targetHref = item.getAttribute('data-href');
+            if (targetHref) window.location.href = targetHref;
+        });
+    });
+
+    document.addEventListener('click', (event) => {
+        if (profileMenu && profileBtn) {
+            if (!profileBtn.contains(event.target) && !profileMenu.contains(event.target)) profileMenu.classList.add('hidden');
+        }
+    });
+
+    const btnLogout = document.querySelector('.logout'); 
+    if (btnLogout) {
+        btnLogout.addEventListener('click', () => {
+            localStorage.removeItem('usuarioActivo');
+            localStorage.removeItem('adminHasSignature');
+            localStorage.removeItem('adminSignatureImage');
+            window.location.href = 'login.html'; 
+        });
+    }
+
+    // 6. PESTAÑAS
+    const tabs = document.querySelectorAll('.solicitudes-tab, .completados-tab');
+    if (tabs.length > 0) {
+        tabs.forEach(tab => {
+            tab.addEventListener('click', () => {
+                const targetId = tab.getAttribute('data-target');
+                const targetContent = document.getElementById(targetId);
+                tabs.forEach(t => t.classList.remove('active-tab'));
+                tab.classList.add('active-tab');
+                const contentWrapper = document.querySelector('.tab-content-wrapper');
+                if (contentWrapper) {
+                    const allContent = contentWrapper.querySelectorAll('.document-list-container');
+                    allContent.forEach(content => content.classList.add('hidden'));
+                    if (targetContent) targetContent.classList.remove('hidden');
+                }
+            });
+        });
+        const activeTab = document.querySelector('.sub-nav .active-tab');
+        if (activeTab) {
+            const initialTargetId = activeTab.getAttribute('data-target');
+            const initialContent = document.getElementById(initialTargetId);
+            const allContent = document.querySelectorAll('.document-list-container');
+            allContent.forEach(content => content.classList.add('hidden'));
+            if (initialContent) initialContent.classList.remove('hidden');
+        }
+    }
+
+    // 7. INYECTAR DATOS DE USUARIO
     function injectUserData() {
         if (!usuario) return; 
         const nombrePila = usuario.NombreDocente || usuario.DirectorNombre || "Usuario";
         const apellidoP = usuario.DocenteApePat || usuario.DirectorApePat || "";
         const nombreCompleto = `${nombrePila} ${apellidoP}`.trim();
-        const cardNameFull = document.getElementById('card-name-full');
+        const rolDisplay = (usuario.Rol === 'Administrativo' || usuario.DirectorNombre) ? "DIRECTOR" : ""; 
+
+        const headerNombre = document.getElementById('header-username') || document.querySelector('.bienvenida-norma-rebeca');
+        if (headerNombre) headerNombre.textContent = `¡Bienvenido(a) ${rolDisplay} ${nombrePila}!`;
+
         const cardNameShort = document.getElementById('card-name-short');
+        const cardNameFull = document.getElementById('card-name-full');
         const cardEmail = document.getElementById('card-email');
         const cardDepto = document.getElementById('card-depto');
 
