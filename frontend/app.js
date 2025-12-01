@@ -1,8 +1,6 @@
 document.addEventListener('DOMContentLoaded', async () => {
     
-    // =========================================================
-    // 1. VERIFICAR SESIÓN
-    // =========================================================
+    // 1. OBTENER USUARIO LOGUEADO
     const usuarioStr = localStorage.getItem('usuarioActivo');
     if (!usuarioStr) {
         window.location.href = 'login.html';
@@ -10,66 +8,37 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
     const usuario = JSON.parse(usuarioStr);
     
-    // Actualizar el nombre en el Header
+    // Actualizar Header
     const headerName = document.getElementById('header-username');
     if (headerName) {
         const nombreMostrar = usuario.NombreDocente || usuario.DirectorNombre || usuario.NombreTitular || 'Usuario';
         headerName.textContent = `¡Hola, ${nombreMostrar}!`;
     }
 
-    // =========================================================
-    // 2. DETECTAR PÁGINA Y CARGAR DATOS
-    // =========================================================
+    // 2. DETECTAR PÁGINA
     const path = window.location.pathname;
 
-    // Si estamos en INICIO (Mis Documentos)
     if (path.includes('inicio.html')) {
         await cargarMisDocumentos(usuario.DocenteID, 'Pendiente', 'solicitudes-content');
         await cargarMisDocumentos(usuario.DocenteID, 'Firmado', 'completados-content');
     }
     
-    // Si estamos en DOCUMENTOS (Catálogo)
     if (path.includes('documentos.html')) {
         await cargarCatalogo(usuario.DocenteID);
     }
 
-    // =========================================================
     // 3. LOGICA DE MIS DOCUMENTOS (Página de Inicio)
-    // =========================================================
     async function cargarMisDocumentos(idUsuario, status, containerId) {
         const container = document.getElementById(containerId);
         if (!container) return;
 
         try {
-            // 1. Obtener documentos normales de la BD
+            // 1. Obtener documentos (El Backend YA incluye los exámenes si status es 'Firmado')
             const response = await fetch(`http://localhost:3000/api/mis-documentos?id=${idUsuario}&status=${status}&rol=${usuario.Rol || 'Docente'}`);
             let documentos = await response.json();
 
-            // 2. INYECTAR LOS EXÁMENES EN LA PESTAÑA "COMPLETADOS"
-            if (status === 'Firmado') {
-                try {
-                    const respExamenes = await fetch(`http://localhost:3000/api/catalogo-inteligente?id=${idUsuario}`);
-                    const dataExamenes = await respExamenes.json();
-                    
-                    // Filtramos solo los que son exámenes (descarga directa)
-                    const soloExamenes = dataExamenes.filter(d => d.tipo === 'descarga_directa');
-                    
-                    // Los adaptamos para que parezcan documentos firmados
-                    const examenesAdaptados = soloExamenes.map(e => ({
-                        DocumentoID: e.id,
-                        TipoDoc: e.nombre, 
-                        FechaDoc: new Date().toISOString(),
-                        StatusDoc: 'Completado', 
-                        EsExamen: true 
-                    }));
-                    
-                    // Los unimos a la lista
-                    documentos = [...documentos, ...examenesAdaptados];
-
-                } catch (e) {
-                    console.error("No se pudieron cargar los exámenes", e);
-                }
-            }
+            // --- ELIMINADO EL BLOQUE DE INYECCIÓN MANUAL PARA EVITAR DUPLICADOS --- 
+            // El servidor ya nos manda la lista completa.
 
             if (documentos.length === 0) {
                 container.innerHTML = `<p style="color: white; text-align:center; margin-top: 20px;">No tienes documentos ${status.toLowerCase()}s.</p>`;
@@ -82,22 +51,20 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const icono = status === 'Pendiente' ? 'Recursos-img/image 20.png' : 'Recursos-img/image 21.png'; 
 
                 if (doc.EsExamen) {
-                    // CASO A: ES UN EXAMEN (VISTA PREVIA PDF EN NUEVA PESTAÑA)
+                    // CASO A: ES UN EXAMEN
                     html += `
                     <div class="clickable-document" onclick="verExamenPDF(${doc.DocumentoID})" style="cursor: pointer;">
                         <div class="document-row">
                             <div class="document-details">
                                 <span class="documento-text">${doc.TipoDoc}</span>
-                                <span class="document-date">Visualizar Constancia (PDF)</span>
+                                <span class="document-date">Clic para visualizar Constancia (PDF)</span>
                             </div>
                             <img class="time-icon" src="${icono}" alt="Listo" />
                         </div>
-                    </div>
-                    `;
+                    </div>`;
                 } else {
                     // CASO B: DOCUMENTO NORMAL
                     const onclickStr = `irAVistaPrevia('${doc.TipoDoc}', '', ${doc.DocumentoID})`;
-                    
                     html += `
                     <div class="clickable-document" onclick="${onclickStr}" style="cursor: pointer;">
                         <div class="document-row">
@@ -107,8 +74,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                             </div>
                             <img class="time-icon" src="${icono}" alt="Estado" />
                         </div>
-                    </div>
-                    `;
+                    </div>`;
                 }
             });
             container.innerHTML = html;
@@ -119,9 +85,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // =========================================================
-    // 4. LOGICA DEL CATÁLOGO (Página Documentos)
-    // =========================================================
+    // 4. LOGICA DEL CATÁLOGO
     async function cargarCatalogo(idUsuario) {
         const container = document.querySelector('.catalog-container');
         if (!container) return;
@@ -129,8 +93,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const response = await fetch(`http://localhost:3000/api/catalogo-inteligente?id=${idUsuario}`);
             const catalogoRaw = await response.json();
-            
-            // Filtramos para NO mostrar los exámenes en el catálogo de solicitudes
+            // Filtro para no mostrar exámenes en el catálogo de solicitudes
             const catalogo = catalogoRaw.filter(item => item.tipo !== 'descarga_directa');
 
             if (catalogo.length === 0) {
@@ -145,12 +108,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                 let estiloExtra = ''; 
                 
                 if (item.bloqueadoPorPerfil) {
-                    // Si está bloqueado
                     clickAction = `alert('Bloqueado: ${item.bloqueadoPorPerfil}')`;
                     textoBoton = 'Bloqueado';
                     estiloExtra = 'opacity: 0.5; cursor: not-allowed;';
                 } else {
-                    // Si está disponible
                     clickAction = `irAVistaPrevia('${item.nombre}', '${item.ruta || ''}', ${item.id})`;
                 }
 
@@ -161,8 +122,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                         <span class="obtain-text">${textoBoton}</span>
                         <img class="action-icon" src="Recursos-img/image 36.png" alt="Ver" />
                     </div>
-                </div>
-                `;
+                </div>`;
             });
             container.innerHTML = html;
 
@@ -172,51 +132,36 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     }
 
-    // =========================================================
-    // 5. FUNCIONES GLOBALES (AQUÍ ESTÁ LA LÓGICA DE RUTAS 🪄)
-    // =========================================================
-    
-    // Función para exámenes pasados (Pestaña Completados)
+    // 5. FUNCIONES GLOBALES
     window.verExamenPDF = (idExamen) => {
         window.open(`http://localhost:3000/api/descargar/exencion/${idExamen}`, '_blank');
     };
 
-    // Función principal para el botón "Obtener"
     window.irAVistaPrevia = (nombre, ruta, idDoc) => {
         let urlBackend = '';
         
-        // --- A. SI ES HORARIOS DE LABORES ---
         if (nombre.includes('Horarios de labores')) {
             urlBackend = `http://localhost:3000/api/descargar/horarios/${usuario.DocenteID}`;
         }
-        
-        // --- B. SI ES CONSTANCIA DE CRÉDITOS ---
         else if (nombre.includes('Constancia de Créditos')) {
             urlBackend = `http://localhost:3000/api/descargar/creditos/${usuario.DocenteID}`;
         }
-
-        // --- C. SI ES EXENCIÓN ---
         else if (nombre.includes('Constancia de Exención')) {
             urlBackend = `http://localhost:3000/api/descargar/exencion/${idDoc}`;
         }
-        
-        // --- D. DOCUMENTOS ESTÁTICOS ---
         else if (nombre.includes('Convocatoria') || nombre.includes('Acreditación')) {
              urlBackend = `Recursos-img/${ruta}`;
              window.open(urlBackend, '_blank');
              return; 
         }
-
-        // --- E. DOCUMENTOS NORMALES ---
         else {
             urlBackend = `http://localhost:3000/api/generar-constancia?tipo=${encodeURIComponent(nombre)}&idUsuario=${usuario.DocenteID}`;
         }
 
-        // Redirigir a la página de vista previa
         window.location.href = `vista-previa-solicitud.html?name=${encodeURIComponent(nombre)}&path=${encodeURIComponent(urlBackend)}`;
     };
 
-    // --- LÓGICA DE UI (SIDEBAR, TABS, MENU) ---
+    // --- UI ---
     const navItems = document.querySelectorAll('.nav-item');
     navItems.forEach(nav => {
         nav.addEventListener('click', (e) => {
@@ -231,15 +176,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             tabs.forEach(t => t.classList.remove('active-tab'));
             tab.classList.add('active-tab');
             const targetId = tab.getAttribute('data-target');
-            
-            const solContent = document.getElementById('solicitudes-content');
-            const compContent = document.getElementById('completados-content');
-            
-            if(solContent) solContent.classList.add('hidden');
-            if(compContent) compContent.classList.add('hidden');
-            
-            const target = document.getElementById(targetId);
-            if(target) target.classList.remove('hidden');
+            document.getElementById('solicitudes-content').classList.add('hidden');
+            document.getElementById('completados-content').classList.add('hidden');
+            document.getElementById(targetId).classList.remove('hidden');
         });
     });
 
@@ -261,13 +200,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
     }
     
-    // Inyectar datos visuales en sidebar
     function injectUserData() {
         if (!usuario) return; 
         const nombrePila = usuario.NombreDocente || usuario.DirectorNombre || "Usuario";
         const apellidoP = usuario.DocenteApePat || usuario.DirectorApePat || "";
         const nombreCompleto = `${nombrePila} ${apellidoP}`.trim();
-        
         const cardNameFull = document.getElementById('card-name-full');
         const cardNameShort = document.getElementById('card-name-short');
         const cardEmail = document.getElementById('card-email');
