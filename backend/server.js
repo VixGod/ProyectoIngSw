@@ -13,6 +13,7 @@ const { llenarEstrategias } = require('./documentos/docEstrategias');
 const { llenarRecurso } = require('./documentos/docRecurso');
 const { llenarCreditos } = require('./documentos/docCreditos');
 const { llenarExencion } = require('./documentos/docExencion');
+const { llenarServicios } = require('./documentos/docServicios');
 
 const app = express();
 app.use(cors());
@@ -393,11 +394,18 @@ app.get('/api/generar-constancia', async (req, res) => {
             pdfDoc = await llenarExencion(null, data, pool);
         }
 
+        else if (tipoDocumento.includes('Servicios') || tipoDocumento.includes('Escolares') || tipoDocumento.includes('07')) {
+    // Generado desde cero, no necesita plantilla base
+    pdfDoc = await llenarServicios(null, data, pool);
+}
+
         // FALLBACK: Cargar solo el PDF base si no hay lógica especial
         else {
             if(!fileBytes) return res.status(500).send("No hay plantilla ni generador para este documento.");
             pdfDoc = await PDFDocument.load(fileBytes);
         }
+
+        
 
         // ----------------------------------------------------------
         // 4. ESTAMPADO DE FIRMAS DIGITALES
