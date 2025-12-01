@@ -29,17 +29,29 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // 3. LOGICA DE MIS DOCUMENTOS (Página de Inicio)
     async function cargarMisDocumentos(idUsuario, status, containerId) {
-        const container = document.getElementById(containerId);
-        if (!container) return;
+    const container = document.getElementById(containerId);
+    if (!container) return;
+
+    // OBTENER DATOS DE SESIÓN para pasar rol y cargo (CRÍTICO para admin/RH)
+    const usuarioStr = localStorage.getItem('usuarioActivo');
+        if (!usuarioStr) return;
+        const usuario = JSON.parse(usuarioStr);
+        
+        // Configurar parámetros de filtrado
+        const userRole = usuario.Rol || 'Docente';
+        const userCargo = usuario.Cargo || 'Docente'; // Este valor filtra la bandeja de pendientes
+        const userId = usuario.DocenteID || idUsuario;
 
         try {
-            // 1. Obtener documentos (El Backend YA incluye los exámenes si status es 'Firmado')
-            const response = await fetch(`http://localhost:3000/api/mis-documentos?id=${idUsuario}&status=${status}&rol=${usuario.Rol || 'Docente'}`);
+            // 1. FETCH AL BACKEND (Incluye 'cargo' para que el filtro SQL funcione)
+            const urlBackend = `http://localhost:3000/api/mis-documentos?id=${userId}&status=${status}&rol=${userRole}&cargo=${userCargo}`;
+            const response = await fetch(urlBackend);
+            
+            if (!response.ok) throw new Error(`El servidor respondió: ${response.status}`);
+            
             let documentos = await response.json();
 
-            // --- ELIMINADO EL BLOQUE DE INYECCIÓN MANUAL PARA EVITAR DUPLICADOS --- 
-            // El servidor ya nos manda la lista completa.
-
+            // 2. RENDERIZADO
             if (documentos.length === 0) {
                 container.innerHTML = `<p style="color: white; text-align:center; margin-top: 20px;">No tienes documentos ${status.toLowerCase()}s.</p>`;
                 return;
@@ -48,10 +60,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             let html = '';
             documentos.forEach(doc => {
                 const fecha = new Date(doc.FechaDoc).toLocaleDateString('es-MX', { year: 'numeric', month: 'long', day: 'numeric' });
+                // Icono: image 20.png = Pendiente, image 21.png = Firmado/Completado
                 const icono = status === 'Pendiente' ? 'Recursos-img/image 20.png' : 'Recursos-img/image 21.png'; 
 
                 if (doc.EsExamen) {
-                    // CASO A: ES UN EXAMEN
+                    // CASO A: ES UN EXAMEN (Descarga directa)
                     html += `
                     <div class="clickable-document" onclick="verExamenPDF(${doc.DocumentoID})" style="cursor: pointer;">
                         <div class="document-row">
@@ -63,13 +76,18 @@ document.addEventListener('DOMContentLoaded', async () => {
                         </div>
                     </div>`;
                 } else {
-                    // CASO B: DOCUMENTO NORMAL
+                    // CASO B: DOCUMENTO NORMAL (PENDIENTE o FIRMADO - Redirección a la vista de firma)
+                    // Pasamos ID y Nombre al visualizador
                     const onclickStr = `window.location.href = 'visualizar-documento.html?idDoc=${doc.DocumentoID}&nombreDoc=${encodeURIComponent(doc.TipoDoc)}'`;
+
+                    // Si es un Administrador, mostramos el nombre del docente que solicitó
+                    const docTitle = doc.Solicitante ? `${doc.TipoDoc} - ${doc.Solicitante}` : doc.TipoDoc;
+
                     html += `
                     <div class="clickable-document" onclick="${onclickStr}" style="cursor: pointer;">
                         <div class="document-row">
                             <div class="document-details">
-                                <span class="documento-text">${doc.TipoDoc}</span>
+                                <span class="documento-text">${docTitle}</span>
                                 <span class="document-date">${fecha}</span>
                             </div>
                             <img class="time-icon" src="${icono}" alt="Estado" />
@@ -80,11 +98,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             container.innerHTML = html;
 
         } catch (error) {
-            console.error("Error cargando documentos:", error);
-            container.innerHTML = '<p style="color: white;">Error de conexión.</p>';
+            console.error(`Error cargando documentos ${status}:`, error);
+            container.innerHTML = '<p style="color: white;">Error de conexión con el servidor.</p>';
         }
     }
-
     // 4. LOGICA DEL CATÁLOGO
     async function cargarCatalogo(idUsuario) {
         const container = document.querySelector('.catalog-container');
