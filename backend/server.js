@@ -49,6 +49,7 @@ app.post('/login', async (req, res) => {
             UNION ALL SELECT DesaAcadID, NombreTitular, ApePatTitular, ApeMatTitular, 'desarrollo@delta.edu', RFCTitular, 'Administrativo', 'DesarrolloAcademico', FirmaDigital FROM DesarrolloAcademico WHERE RFCTitular = @user AND TitularPassword = @pass
             UNION ALL SELECT JefaDepartamentoID, NombreTitular, ApePatTitular, ApeMatTitular, 'jefatura@delta.edu', RFCTitular, 'Administrativo', 'JefaDepartamento', FirmaDigital FROM JefaDepartamento WHERE RFCTitular = @user AND TitularPassword = @pass
             UNION ALL SELECT PresidenteID, PresidenteNombre, PresidenteApePat, PresidenteApeMat, 'academia@delta.edu', RFCPresidente, 'Administrativo', 'PresidenteAcademia', FirmaDigital FROM PresidenteAcademia WHERE RFCPresidente = @user AND PresidentePassword = @pass
+            UNION ALL SELECT ConaicID, NombreTitular, ApePatTitular, ApeMatTitular, 'conaic@delta.edu', RFCTitular, 'Administrativo', 'PresidenteCONAIC', FirmaDigital FROM PresidenteCONAIC WHERE RFCTitular = @user AND TitularPassword = @pass
             UNION ALL SELECT ResponsableID, NombreTitular, ApePatTitular, ApeMatTitular, 'area@delta.edu', RFCTitular, 'Administrativo', 'ResponsableArea', FirmaDigital FROM ResponsableArea WHERE RFCTitular = @user AND TitularPassword = @pass
         `;
 
