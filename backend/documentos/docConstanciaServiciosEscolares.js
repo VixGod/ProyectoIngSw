@@ -103,9 +103,9 @@ module.exports = function(app) {
 
             // --- ENCABEZADO ---
             // (Se asume que los archivos de imágenes existen en la ruta indicada)
-            const imgPathLogoSEP = path.join(__dirname, '..', 'frontend', 'Recursos-img', 'logoSEP.png');
-            const imgPathLogoTecNM_Culiacan = path.join(__dirname, '..', 'frontend', 'Recursos-img', 'LOGO_TECNM.png');
-            const imgPathEscudo = path.join(__dirname, '..', 'frontend', 'Recursos-img', 'bandera.jpg'); 
+            const imgPathLogoSEP = path.join(__dirname,'..', '..', 'frontend', 'Recursos-img', 'logoSEP.png');
+            const imgPathLogoTecNM_Culiacan = path.join(__dirname,'..', '..', 'frontend', 'Recursos-img', 'LOGO_TECNM.png');
+            const imgPathEscudo = path.join(__dirname,'..', '..', 'frontend', 'Recursos-img', 'bandera.jpg');
 
             const logoSepBytes = fs.readFileSync(imgPathLogoSEP);
             const logoTecNMCuliacanBytes = fs.readFileSync(imgPathLogoTecNM_Culiacan);
@@ -116,12 +116,10 @@ module.exports = function(app) {
             const escudo = await pdfDoc.embedJpg(escudoBytes);
 
 
-            page.drawImage(escudo, { x: 50, y: height - 100, width: 40, height: 40 });
-            drawText('Educación', 95, height - 75, { size: 18, font: fontBold });
-            drawText('Secretaría de Educación Pública', 95, height - 88, { size: 8 });
+            page.drawImage(logoSep, { x: 50, y: height - 100, width: 40, height: 40 });
 
             page.drawImage(logoTecNMCuliacan, { x: width / 2 - 30, y: height - 90, width: 60, height: 30 }); // Usado para TecNM central
-            page.drawImage(logoTecNMCuliacan, { x: width - 110, y: height - 100, width: 60, height: 60 }); // Usado para Escudo derecho
+            page.drawImage(escudo, { x: width - 110, y: height - 100, width: 60, height: 60 }); // Usado para Escudo derecho
             
             drawText('Instituto Tecnológico de Culiacán', width - margin - 150, currentY - 60, { size: 9, font: fontItalic, maxWidth: 140 });
             drawText('Depto. de Servicios Escolares', width - margin - 150, currentY - 75, { size: 9, font: fontBold, maxWidth: 140 });
@@ -168,10 +166,24 @@ module.exports = function(app) {
                         color: bgColor, opacity: 0.2
                     });
                 }
+                
+                // Determinar la fuente real para medición (si es bold o regular)
+                const currentFont = bold ? fontBold : font;
                 let textX = x + 2;
-                if (align === 'center') textX = x + (colW / 2) - (font.widthOfText(text, size) / 2);
-                if (align === 'right') textX = x + colW - font.widthOfText(text, size) - 2;
-                drawText(text, textX, y, { font: bold ? fontBold : font, size: size });
+
+                // 1. Obtener ancho CORRECTO
+                const textWidth = currentFont.widthOfTextAtSize(text, size); 
+
+                // 2. Calcular posición
+                if (align === 'center') {
+                    textX = x + (colW / 2) - (textWidth / 2);
+                }
+                if (align === 'right') {
+                    textX = x + colW - textWidth - 2; // -2 para el padding derecho
+                }
+
+                // 3. Dibujar
+                drawText(text, textX, y, { font: currentFont, size: size });
             };
 
             const headerY = currentY;
@@ -245,17 +257,17 @@ module.exports = function(app) {
             currentY -= 50;
 
             // --- FOOTER DE IMAGEN ---
-            const footerImgPath = path.join(__dirname, '..', 'frontend', 'Recursos-img', 'footer_constancia.png');
-            const footerImgBytes = fs.readFileSync(footerImgPath);
-            const footerImg = await pdfDoc.embedPng(footerImgBytes);
+            // const footerImgPath = path.join(__dirname, '..', 'frontend', 'Recursos-img', 'footer_constancia.png');
+            // const footerImgBytes = fs.readFileSync(footerImgPath);
+            // const footerImg = await pdfDoc.embedPng(footerImgBytes);
 
-            page.drawImage(footerImg, {
-                x: margin,
-                y: 30, 
-                width: width - (2 * margin),
-                height: 50,
-                opacity: 0.8
-            });
+            // page.drawImage(footerImg, {
+            //     x: margin,
+            //     y: 30, 
+            //     width: width - (2 * margin),
+            //     height: 50,
+            //     opacity: 0.8
+            // });
 
             // Finalizar y enviar PDF
             const pdfBytesFinal = await pdfDoc.save();
