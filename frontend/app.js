@@ -30,9 +30,9 @@ document.addEventListener('DOMContentLoaded', () => {
                     let rutaApi = `http://localhost:3000/api/generar-constancia?nombre=${encodeURIComponent(usuario.NombreDocente)}&tipo=${encodeURIComponent(doc.nombre)}&idDoc=0`;
                     
                     // Excepción para documentos estáticos
-                    if (doc.nombre.includes('Convocatoria') || doc.nombre.includes('Acreditación')) {
-                         rutaApi = `Recursos-img/${doc.ruta}`;
-                    }
+                    if (doc.nombre.includes('Convocatoria')) {
+     rutaApi = `Recursos-img/${doc.ruta}`;
+}
                     
                     const encodedPath = encodeURIComponent(rutaApi);
                     let botonAccion = '';
