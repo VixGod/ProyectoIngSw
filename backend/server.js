@@ -14,6 +14,8 @@ const { llenarRecurso } = require('./documentos/docRecurso');
 const { llenarCreditos } = require('./documentos/docCreditos');
 const { llenarExencion } = require('./documentos/docExencion');
 const { llenarServicios } = require('./documentos/docServicios');
+const { llenarAcreditacion } = require('./documentos/docAcreditacion');
+const { llenarCargaAcademica } = require('./documentos/docCargaAcademica');
 
 const app = express();
 app.use(cors());
@@ -320,20 +322,21 @@ app.get('/api/generar-constancia', async (req, res) => {
         }
 
         // 2. CARGAR PDF BASE (O verificar configuración)
-        const fileQuery = await pool.request().input('nombreDoc', tipoDocumento).query("SELECT NombreArchivoPDF FROM TiposDocumento WHERE NombreVisible = @nombreDoc");
-        if (fileQuery.recordset.length === 0) return res.status(404).send(`Documento no configurado en BD.`);
+   const fileQuery = await pool.request().input('nombreDoc', tipoDocumento).query("SELECT NombreArchivoPDF FROM TiposDocumento WHERE NombreVisible = @nombreDoc");
+        
+        if (fileQuery.recordset.length === 0) {
+            return res.status(404).send(`Documento '${tipoDocumento}' no configurado en BD.`);
+        }
         
         let archivoPDF = fileQuery.recordset[0].NombreArchivoPDF;
         const rutaPDF = path.join(__dirname, '..', 'frontend', 'Recursos-img', archivoPDF); 
         
-        // Leemos el archivo base (aunque algunos generadores lo ignoren, sirve para validar que existe el tipo)
         let fileBytes = null;
         if (fs.existsSync(rutaPDF)) {
             fileBytes = fs.readFileSync(rutaPDF);
         } else {
-            // Si no existe el archivo físico pero es generado desde cero (Créditos/Exención), no hay problema.
-            // Si es plantilla (Laboral), fallará después.
-            console.warn(`Aviso: Archivo base ${archivoPDF} no encontrado. Se intentará generar desde cero.`);
+            // AQUÍ ESTÁ EL TRUCO: Solo avisamos, NO lanzamos error 404
+            console.log(`⚠️ Archivo base ${archivoPDF} no encontrado. Se asumirá generación desde cero.`);
         }
 
         let pdfDoc;
@@ -397,6 +400,14 @@ app.get('/api/generar-constancia', async (req, res) => {
         else if (tipoDocumento.includes('Servicios') || tipoDocumento.includes('Escolares') || tipoDocumento.includes('07')) {
     // Generado desde cero, no necesita plantilla base
     pdfDoc = await llenarServicios(null, data, pool);
+}
+
+else if (tipoDocumento.includes('Acreditación') || tipoDocumento.includes('CONAIC')) {
+            // No nos importa si fileBytes es null, porque este crea su propio PDF
+            pdfDoc = await llenarAcreditacion(null, data, pool);
+        } // CASO J: Carga Académica (Horario)
+else if (tipoDocumento.includes('Carga') || tipoDocumento.includes('Horario')) {
+    pdfDoc = await llenarCargaAcademica(null, data, pool);
 }
 
         // FALLBACK: Cargar solo el PDF base si no hay lógica especial
