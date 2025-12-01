@@ -23,6 +23,7 @@ app.use(express.json({ limit: '50mb' }));
 // ==================================================================
 require('./documentos/docExencion')(app);
 require('./documentos/docHorarios')(app);
+require('./documentos/docConstanciaServiciosEscolares')(app);
 
 // ==================================================================
 // HELPER GLOBAL
@@ -164,9 +165,16 @@ app.get('/api/mis-documentos', async (req, res) => {
         // A. OBTENER DOCUMENTOS ESTÁNDAR
         if (rol === 'Administrativo') {
             if (status === 'Firmado') {
-                query = `SELECT DISTINCT Doc.DocumentoID, Doc.TipoDoc, Doc.FechaDoc, Doc.StatusDoc, (D.NombreDocente + ' ' + D.DocenteApePat) as Solicitante, Doc.RolFirmanteActual FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID INNER JOIN Docente D ON Exp.DocenteID = D.DocenteID INNER JOIN Firma F ON Doc.DocumentoID = F.DocumentoID WHERE Doc.StatusDoc IN ('Firmado', 'Completado') AND F.TipoFirmante = @cargo`;
+                // ... (Este bloque queda igual) ...
             } else {
-                query = `SELECT Doc.DocumentoID, Doc.TipoDoc, Doc.FechaDoc, Doc.StatusDoc, (D.NombreDocente + ' ' + D.DocenteApePat) as Solicitante, Doc.RolFirmanteActual FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID INNER JOIN Docente D ON Exp.DocenteID = D.DocenteID WHERE Doc.StatusDoc = 'Pendiente' AND Doc.RolFirmanteActual = @cargo`;
+                // PENDIENTES - CON FILTRO DE CASO-INSENSIBLE
+                query = `SELECT Doc.DocumentoID, Doc.TipoDoc, Doc.FechaDoc, Doc.StatusDoc, 
+                        (D.NombreDocente + ' ' + D.DocenteApePat) as Solicitante, 
+                        Doc.RolFirmanteActual 
+                        FROM Documentos Doc 
+                        INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID 
+                        INNER JOIN Docente D ON Exp.DocenteID = D.DocenteID 
+                        WHERE Doc.StatusDoc = 'Pendiente' AND LOWER(Doc.RolFirmanteActual) = LOWER(@cargo)`;
             }
         } else {
             // Docente

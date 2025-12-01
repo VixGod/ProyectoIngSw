@@ -3,8 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title id="page-title-doc">DELTA - Documento</title>
+    <title id="page-title-doc">DELTA - Visualizar Documento</title>
     <link rel="stylesheet" href="inicio.css">
+    <style>
+        /* Estilos extra para el botón de firma */
+        .sign-button {
+            background-color: #28a745; /* Verde */
+            color: white;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 5px;
+            font-size: 18px;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        .sign-button:hover { background-color: #218838; }
+        .sign-button:disabled { background-color: #ccc; cursor: not-allowed; }
+    </style>
 </head>
 <body>
     <div class="main-container">
@@ -16,176 +33,169 @@
                     <span class="header-subtitle-text">Obtención de Documentos</span>
                 </div>
             </div>
-            
             <div class="user-info">
-                <span class="bienvenida-norma-rebeca">¡Bienvenida Norma Rebeca!</span>
-                <img class="notification-icon" src="Recursos-img/image 40.png" alt="Icono de Notificación" />
-                
+                <span id="header-username" class="bienvenida-norma-rebeca">¡Bienvenido!</span>
                 <div class="profile-container" id="profile-btn">
-                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Icono de Perfil" />
-                </div>
-
-                <div class="profile-menu hidden" id="profile-menu">
-                    <button class="close-btn" id="close-menu-btn">
-                        <span style="font-size: 20px; color: #333;">&times;</span>
-                    </button>
-                    
-                    <div class="menu-item" data-href="perfil.html">
-                        <img class="menu-icon" src="Recursos-img/image 31.png" alt="Mi Perfil" />
-                        <span>Mi Perfil</span>
-                    </div>
-                    <div class="menu-item">
-                        <img class="menu-icon" src="Recursos-img/image 32.png" alt="Ayuda y Soporte" />
-                        <span>Ayuda y Soporte</span>
-                    </div>
-                    <div class="menu-item logout">
-                        <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesiónl" />
-                        <span>Cerrar Sesión</span>
-                    </div>
+                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Perfil" />
                 </div>
             </div>
         </header>
 
         <div class="page-content">
             <nav class="sidebar">
-                <a href="#" class="nav-item" data-href="inicio.html">
-                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Icono Inicio" />
+                <a href="inicio.html" class="nav-item">
+                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Inicio" />
                     <span class="nav-text">Inicio</span>
                 </a>
-
-                <a href="#" class="nav-item active" data-href="documentos.html">
-                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Icono Documentos" />
+                <a href="documentos.html" class="nav-item active">
+                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Documentos" />
                     <span class="nav-text">Documentos</span>
-                </a>
-
-                 <a href="#" class="nav-item active" data-href="mis-reportes.html">
-                    <img class="nav-icon" src="Recursos-img/informe.png" alt="Documentos" />
-                    <span class="nav-text">Quejas</span>
-                </a>
-                
-                <a href="#" class="nav-item nav-footer">
-                    <img class="nav-icon" src="Recursos-img/image 8.png" alt="Icono Footer" />
                 </a>
             </nav>
 
             <main class="content-area">
                 <div class="document-viewer-container">
                     <div class="document-header">
-                        <a href="javascript:history.back()" class="back-button">
+                        <a href="inicio.html" class="back-button">
                             <span style="font-size: 24px; margin-right: 5px;">&#8592;</span> 
-                            Volver a Documentos
+                            Volver
                         </a>
-                        
-                        <h2 class="document-title-viewer" id="document-title">Cargando documento...</h2>
+                        <h2 class="document-title-viewer" id="document-title">Cargando...</h2>
                         <div style="width: 50px;"></div> 
                     </div>
                     
                     <div class="document-frame">
-                        </div>
+                        <p style="text-align:center; padding-top:50px;">Cargando vista previa...</p>
+                    </div>
                 </div>
 
-                <div class="download-button-container" id="action-container">
-                    <button class="download-button" id="download-doc-btn">
-                        <span style="font-size: 20px;">&#128229;</span>
-                        Descargar
+                <div class="download-button-container" id="action-container" style="gap: 15px;">
+                    
+                    <button class="download-button" id="download-doc-btn" style="display: none;">
+                        <span>&#128229;</span> Descargar PDF
                     </button>
+
+                    <button class="sign-button" id="sign-doc-btn" style="display: none;">
+                        <span>&#9997;</span> Firmar Documento
+                    </button>
+                    
+                    <input type="file" id="firma-input" accept="image/*" style="display: none;">
+
                 </div>
             </main>
         </div>
     </div>
 
-    <script src="app.js"></script>
     <script>
-        document.addEventListener('DOMContentLoaded', () => {
-            // 1. OBTENER DATOS DE URL
+        document.addEventListener('DOMContentLoaded', async () => {
+            // 1. OBTENER USUARIO
+            const usuarioStr = localStorage.getItem('usuarioActivo');
+            if (!usuarioStr) { window.location.href = 'login.html'; return; }
+            const usuario = JSON.parse(usuarioStr);
+            document.getElementById('header-username').textContent = `¡Hola, ${usuario.NombreDocente || usuario.DirectorNombre || 'Usuario'}!`;
+
+            // 2. LEER PARÁMETROS URL
             const params = new URLSearchParams(window.location.search);
-            const docId = params.get('id');
-            const docName = decodeURIComponent(params.get('name') || 'Documento sin Nombre');
-            const docPath = decodeURIComponent(params.get('path') || '');
-            const docStatus = params.get('status') || 'Pendiente'; 
+            // Nota: app.js envía 'idDoc' y 'nombreDoc'
+            const docId = params.get('idDoc'); 
+            const docName = decodeURIComponent(params.get('nombreDoc') || 'Documento');
+            
+            document.getElementById('document-title').textContent = docName;
+            const documentFrame = document.querySelector('.document-frame');
 
-            const documentTitleElement = document.getElementById('document-title');
-            const documentFrame = document.querySelector('.document-frame'); 
-            const downloadDocBtn = document.getElementById('download-doc-btn');
-            const actionContainer = document.getElementById('action-container');
-            const pageTitleDoc = document.getElementById('page-title-doc');
-
-            documentTitleElement.textContent = docName;
-            pageTitleDoc.textContent = `DELTA - ${docName}`;
-
-            // 2. LÓGICA DE BLOQUEO DE DESCARGA
-            // Si NO está firmado ni completado, ocultamos el botón y mostramos aviso.
-            if (docStatus !== 'Firmado' && docStatus !== 'Completado') {
-                downloadDocBtn.style.display = 'none'; 
-                
-                // Crear mensaje de aviso usando las clases de inicio.css
-                const statusMsg = document.createElement('div');
-                statusMsg.className = 'status-badge status-pendiente';
-                statusMsg.innerHTML = '&#9203; Documento en Proceso de Firma';
-                actionContainer.appendChild(statusMsg);
+            if (!docId) {
+                documentFrame.innerHTML = '<p>Error: Falta ID del documento.</p>';
+                return;
             }
 
-            // 3. CARGAR VISUALIZACIÓN
-            if (docPath) {
-                const isPdf = docPath.toLowerCase().endsWith('.pdf') || docPath.includes('generar-constancia');
-                const urlNoCache = docPath.includes('?') ? `${docPath}&t=${Date.now()}` : `${docPath}?t=${Date.now()}`;
+            // 3. CONSTRUIR URL DEL PDF (Usando tu generador del backend)
+            // Esto llama a /api/generar-constancia pasándole el ID para que estampe las firmas actuales
+            const pdfUrl = `http://localhost:3000/api/generar-constancia?tipo=${encodeURIComponent(docName)}&idDoc=${docId}&t=${Date.now()}`;
 
-                if (isPdf) {
-                    documentFrame.innerHTML = `
-                        <iframe 
-                            src="${urlNoCache}#toolbar=0&navpanes=0" 
-                            width="100%" 
-                            height="100%" 
-                            style="border: none;"
-                        >
-                            Tu navegador no soporta la visualización de PDFs.
-                        </iframe>
-                    `;
+            // Mostrar el PDF en el iframe
+            documentFrame.innerHTML = `
+                <iframe src="${pdfUrl}#toolbar=0&navpanes=0" width="100%" height="100%" style="border: none;"></iframe>
+            `;
+
+            // 4. VERIFICAR ESTADO DEL DOCUMENTO (¿ME TOCA FIRMAR?)
+            try {
+                // Consultamos mis documentos pendientes para ver si este está ahí y me toca a mí
+                const response = await fetch(`http://localhost:3000/api/mis-documentos?id=${usuario.DocenteID}&status=Pendiente&rol=${usuario.Rol}&cargo=${usuario.Cargo}`);
+                const docs = await response.json();
+                
+                // Buscamos el documento actual en la lista
+                const esteDoc = docs.find(d => d.DocumentoID == docId);
+
+                const btnFirmar = document.getElementById('sign-doc-btn');
+                const btnDescargar = document.getElementById('download-doc-btn');
+                const inputFirma = document.getElementById('firma-input');
+
+                // LÓGICA DE BOTONES
+                if (esteDoc) {
+                    // Si el documento aparece en mis pendientes, significa que ME TOCA FIRMAR
+                    // (OJO: Tu backend ya filtra por RolFirmanteActual, así que si lo recibo, es mío)
+                    btnFirmar.style.display = 'flex';
+                    
+                    // --- EVENTO AL HACER CLIC EN FIRMAR ---
+                    btnFirmar.onclick = () => {
+                        // Abrir selector de archivos
+                        inputFirma.click();
+                    };
+
+                    // --- EVENTO AL SELECCIONAR IMAGEN ---
+                    inputFirma.onchange = async (e) => {
+                        const file = e.target.files[0];
+                        if (!file) return;
+
+                        // Convertir imagen a Base64
+                        const reader = new FileReader();
+                        reader.readAsDataURL(file);
+                        reader.onload = async () => {
+                            const base64Firma = reader.result; // DataURL completo
+
+                            // Enviar al Backend
+                            if(confirm("¿Estás seguro de firmar este documento con la imagen seleccionada?")) {
+                                btnFirmar.textContent = "Firmando...";
+                                btnFirmar.disabled = true;
+
+                                try {
+                                    const respFirma = await fetch('http://localhost:3000/api/firmar-documento', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            idDocumento: docId,
+                                            firmaBase64: base64Firma,
+                                            idFirmante: usuario.DocenteID, // ID genérico
+                                            rolFirmanteActual: usuario.Cargo // Ej: 'Docente', 'Direccion'
+                                        })
+                                    });
+                                    const resJson = await respFirma.json();
+                                    
+                                    if (resJson.success) {
+                                        alert("Documento firmado correctamente.");
+                                        window.location.href = 'inicio.html'; // Volver al inicio
+                                    } else {
+                                        alert("Error: " + resJson.message);
+                                        btnFirmar.disabled = false;
+                                        btnFirmar.textContent = "Firmar Documento";
+                                    }
+                                } catch (error) {
+                                    console.error(error);
+                                    alert("Error de conexión al firmar.");
+                                }
+                            }
+                        };
+                    };
+
                 } else {
-                    documentFrame.innerHTML = `
-                        <img 
-                            class="document-image" 
-                            src="${urlNoCache}" 
-                            alt="Visualización del documento" 
-                        />
-                    `;
+                    // Si no está en pendientes, revisamos si está en COMPLETADOS/FIRMADOS
+                    // (Podrías hacer otro fetch con status='Firmado', o asumir que si no es pendiente, es descarga)
+                    btnDescargar.style.display = 'flex';
+                    btnDescargar.onclick = () => window.open(pdfUrl, '_blank');
                 }
 
-                // 4. LÓGICA DE DESCARGA SEGURA
-                downloadDocBtn.onclick = async () => {
-                    try {
-                        const originalText = downloadDocBtn.innerHTML;
-                        downloadDocBtn.textContent = "Descargando...";
-                        downloadDocBtn.disabled = true;
-
-                        const response = await fetch(urlNoCache);
-                        if (!response.ok) throw new Error("Error en la red");
-                        
-                        const blob = await response.blob();
-                        const url = window.URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = docName.replace(/ /g, '_') + '.pdf'; 
-                        
-                        document.body.appendChild(a);
-                        a.click();
-                        
-                        window.URL.revokeObjectURL(url);
-                        document.body.removeChild(a);
-                        
-                        downloadDocBtn.innerHTML = originalText;
-                        downloadDocBtn.disabled = false;
-
-                    } catch (error) {
-                        console.error("Error al descargar:", error);
-                        alert("No se pudo descargar el archivo.");
-                        downloadDocBtn.disabled = false;
-                        downloadDocBtn.textContent = "Descargar";
-                    }
-                };
-            } else {
-                documentFrame.innerHTML = '<p style="color: #666; font-size: 20px;">No se encontró el archivo.</p>';
-                downloadDocBtn.style.display = 'none';
+            } catch (error) {
+                console.error("Error verificando estado:", error);
             }
         });
     </script>

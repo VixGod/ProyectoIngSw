@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                     </div>`;
                 } else {
                     // CASO B: DOCUMENTO NORMAL
-                    const onclickStr = `irAVistaPrevia('${doc.TipoDoc}', '', ${doc.DocumentoID})`;
+                    const onclickStr = `window.location.href = 'visualizar-documento.html?idDoc=${doc.DocumentoID}&nombreDoc=${encodeURIComponent(doc.TipoDoc)}'`;
                     html += `
                     <div class="clickable-document" onclick="${onclickStr}" style="cursor: pointer;">
                         <div class="document-row">
@@ -147,6 +147,10 @@ document.addEventListener('DOMContentLoaded', async () => {
         // 2. CASO EXENCIÓN (Usa su propia ruta de descarga)
         else if (nombre.includes('Constancia de Exención')) {
             urlBackend = `http://localhost:3000/api/descargar/exencion/${idDoc}`;
+        }
+        else if (nombre.includes('Servicios Escolares')) {
+            // Llama a la ruta específica que acabamos de crear en el módulo
+            urlBackend = `http://localhost:3000/api/generar-constancia-servicios/${usuario.DocenteID}`;
         }
         // 3. ARCHIVOS ESTÁTICOS (Se abren directo de la carpeta Recursos-img)
         else if (nombre.includes('Convocatoria') || nombre.includes('Acreditación')) {
