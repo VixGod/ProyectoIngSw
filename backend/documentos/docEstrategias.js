@@ -2,20 +2,21 @@
 const { sql, poolPromise } = require('../db');
 const { PDFDocument } = require('pdf-lib');
 
-// MODIFICADO: Formato "10 de junio de 2025" (Estilo CVU)
 function obtenerFechaTexto() {
     const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     const d = new Date();
-    return `${d.getDate()} de ${meses[d.getMonth()]} de ${d.getFullYear()}`;
+    // Formato: 13/junio/2025
+    return `${d.getDate()}/${meses[d.getMonth()]}/${d.getFullYear()}`;
 }
 
 async function llenarEstrategias(fileBytes, data) {
-    console.log("📄 Generando Constancias de Estrategias (Formato Fecha CVU)...");
+    console.log("📄 Generando Constancias de Estrategias (Filtro Estricto por Materia)...");
 
     try {
         const pool = await poolPromise;
 
         // 1. OBTENER DATOS CRUDOS DE LA BD
+        // Quitamos DISTINCT aquí para ver todo y filtramos en JS que es más seguro
         const queryMaterias = `
             SELECT M.NombreMateria, M.Estrategia, M.Prog 
             FROM Grupo G 
@@ -38,10 +39,13 @@ async function llenarEstrategias(fileBytes, data) {
         const yaProcesadas = new Set();
 
         filasCrudas.forEach(fila => {
+            // Creamos una "huella digital" única para la materia (quitando espacios y mayúsculas)
+            // Solo nos importa el Nombre de la Materia para distinguir
             const huella = fila.NombreMateria.trim().toUpperCase();
+
             if (!yaProcesadas.has(huella)) {
-                materiasUnicas.push(fila); 
-                yaProcesadas.add(huella);  
+                materiasUnicas.push(fila); // Agregamos a la lista limpia
+                yaProcesadas.add(huella);  // Marcamos como procesada
             }
         });
 
@@ -50,8 +54,8 @@ async function llenarEstrategias(fileBytes, data) {
         // 2. CREAR DOCUMENTO MAESTRO
         const pdfMaestro = await PDFDocument.create();
 
-        // 3. OBTENER DATOS
-        const fechaTxt = obtenerFechaTexto(); // Usamos la nueva función
+        // 3. OBTENER DATOS DE JEFES
+        const fechaTxt = obtenerFechaTexto();
         const nombreCompleto = `${data.NombreDocente} ${data.DocenteApePat} ${data.DocenteApeMat}`.toUpperCase();
         
         let nombreJefe = "", nombrePres = "", nombreSub = "";
@@ -65,7 +69,7 @@ async function llenarEstrategias(fileBytes, data) {
         const qSub = await pool.request().query("SELECT TOP 1 * FROM Subdireccion");
         if(qSub.recordset.length) { const s = qSub.recordset[0]; nombreSub = `${s.NombreTitular} ${s.ApePatTitular} ${s.ApeMatTitular}`.toUpperCase(); }
 
-        // 4. GENERAR PÁGINAS
+        // 4. GENERAR PDF (Usando la lista limpia 'materiasUnicas')
         for (const materia of materiasUnicas) {
             const pdfTemp = await PDFDocument.load(fileBytes);
             const formTemp = pdfTemp.getForm();
@@ -74,9 +78,7 @@ async function llenarEstrategias(fileBytes, data) {
                 try { const c = formTemp.getTextField(id); if(c) c.setText(String(val).trim()); } catch(e){}
             };
 
-            // Aquí llenamos la fecha con el nuevo formato
             llenar('Fecha', fechaTxt);
-            
             llenar('NombreDocente', nombreCompleto);
             llenar('NombreJefe', nombreJefe);
             llenar('NombrePresidente', nombrePres);
