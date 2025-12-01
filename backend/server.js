@@ -12,6 +12,7 @@ const { llenarTutoria } = require('./documentos/docTutoria');
 const { llenarEstrategias } = require('./documentos/docEstrategias');
 const { llenarRecurso } = require('./documentos/docRecurso');
 const { llenarCreditos } = require('./documentos/docCreditos');
+const { llenarAsignaturas } = require('./documentos/docAsignaturas');
 
 const app = express();
 app.use(cors());
@@ -323,6 +324,12 @@ app.get('/api/generar-constancia', async (req, res) => {
             const fileBytes = fs.readFileSync(rutaPDF);
             pdfDoc = await PDFDocument.load(fileBytes);
             
+            if (tipoDocumento.includes('Asignaturas')) {
+                // Pasamos 'pool' porque tu modulo hace consultas propias
+                const docLleno = await llenarAsignaturas(fileBytes, data.DocenteID, pool);
+                if (docLleno) pdfDoc = docLleno;
+            }
+            
             // Intentamos obtener el form (solo existe en plantillas editables)
             try { form = pdfDoc.getForm(); } catch(e) {}
 
@@ -382,6 +389,10 @@ app.get('/api/generar-constancia', async (req, res) => {
                                 else if (tipoDocumento.includes('Tutoría')) {
                                     if (f.TipoFirmante === 'DesarrolloAcademico') { x = 80; y=260; }
                                     else if (f.TipoFirmante === 'Subdireccion') { x = 405; y=260; }
+                                }
+                                else if (tipoDocumento.includes('Asignaturas')) {
+                                    if (f.TipoFirmante === 'Docente') { x = 70; y = 90; }     // Izquierda
+                                    else if (f.TipoFirmante === 'Direccion') { x = 620; y = 90; } // Derecha (Director)
                                 }
                                 else if (tipoDocumento.includes('Laboral')) { x = 100; y=280; } 
                                 else { x = 100; y=300; } // Default
