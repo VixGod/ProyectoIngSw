@@ -276,3 +276,122 @@ BEGIN
     VALUES (2, 'Victoria Adahi', 'Ontiveros', 'Ramos', 'victoria@itc.mx', 'Activo', 'ORVA200505MNO', '123456', 1, 'SOSpass', 'IT11B716', 2, '2020-01-01', 'ASOCIADO A', 'TIEMPO COMPLETO', 'E3817', '2023-01-01');
 END
 UPDATE Docente SET PromedioEvaluacion = 80.0, PorcentajeAsistencia = 85 WHERE DocenteID = 2;
+--Fima docente
+
+IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID(N'Docente') AND name = 'FirmaDigital')
+BEGIN
+    ALTER TABLE Docente ADD FirmaDigital NVARCHAR(MAX) NULL;
+    PRINT '✅ Columna FirmaDigital agregada a Docente.';
+END
+ELSE
+BEGIN
+    PRINT 'ℹ️ La columna FirmaDigital ya existía en Docente.';
+END
+GO 
+
+USE TECNM;
+GO
+    
+
+
+-- 1. Insertar el tipo de documento (ID 12, asumiendo que tenías 11)
+INSERT INTO TiposDocumento (NombreVisible, NombreArchivoPDF, RequiereValidacion) 
+VALUES ('Validación de Cédula Profesional', 'validacion_cedula.pdf', NULL);
+
+-- 2. Configurar la ruta de firma (Se firma solo por el Docente)
+DECLARE @TipoID INT = (SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Validación de Cédula Profesional');
+
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES (@TipoID, 1, 'Docente');
+GO
+USE TECNM;
+GO
+--en caso que este falla quienes fimasn 
+IF OBJECT_ID('Firma', 'U') IS NOT NULL DROP TABLE Firma;
+
+-- 2. Crear la tabla FIRMA correctamente
+CREATE TABLE Firma (
+    FirmaID INT IDENTITY(1,1) PRIMARY KEY,
+    FechaFirma DATE DEFAULT GETDATE(),
+    DocumentoID INT NOT NULL,
+    TipoFirmante NVARCHAR(50) NOT NULL, 
+    FirmanteID INT NOT NULL, 
+    FirmaImagen NVARCHAR(MAX) NULL,
+    CONSTRAINT FK_Firma_Documento FOREIGN KEY (DocumentoID) REFERENCES Documentos(DocumentoID)
+);
+
+PRINT '✅ Tabla Firma recuperada exitosamente.';
+GO
+
+
+USE TECNM;
+GO
+
+-- 1. LIMPIEZA DE RUTAS VIEJAS
+DELETE FROM RutaFirma;
+DBCC CHECKIDENT ('RutaFirma', RESEED, 0);
+
+-- 2. INSERCIÓN DE RUTAS CORREGIDAS
+-- Nota: Usamos subconsultas para garantizar que el ID sea el correcto aunque cambie
+
+-- A. CONSTANCIA LABORAL -> RH
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia Laboral'), 1, 'RH');
+
+-- B. CONSTANCIA DE CVU -> Desarrollo Académico
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de CVU'), 1, 'DesarrolloAcademico');
+
+-- C. CONSTANCIA DE TUTORÍA -> Desarrollo (1) -> Subdirección (2)
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Tutoría'), 1, 'DesarrolloAcademico');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Tutoría'), 2, 'Subdireccion');
+
+-- D. CONSTANCIA DE SERVICIOS ESCOLARES -> Servicios Escolares
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Servicios Escolares'), 1, 'ServiciosEscolares');
+
+-- E. ACREDITACIÓN CONAIC -> Dirección
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Acreditación CONAIC'), 1, 'Direccion');
+
+-- F. ESTRATEGIAS DIDÁCTICAS -> Jefe Depto (1) -> Presidente (2) -> Subdirección (3)
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Estrategias Didácticas'), 1, 'JefaDepartamento');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Estrategias Didácticas'), 2, 'PresidenteAcademia');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Estrategias Didácticas'), 3, 'Subdireccion');
+
+-- G. RECURSO EDUCATIVO -> (Igual que Estrategias)
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Recurso Educativo Digital'), 1, 'JefaDepartamento');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Recurso Educativo Digital'), 2, 'PresidenteAcademia');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Recurso Educativo Digital'), 3, 'Subdireccion');
+
+-- H. CRÉDITOS (MONITOR) -> Responsable Área (1) -> Subdirección (2)
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Créditos (Monitor)'), 1, 'ResponsableArea');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Créditos (Monitor)'), 2, 'Subdireccion');
+
+-- I. EXENCIÓN DE EXAMEN -> Servicios Escolares
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Constancia de Exención de Examen Prof.'), 1, 'ServiciosEscolares');
+
+-- J. CARGA ACADÉMICA (HORARIO) -> Jefe Depto (1) -> Subdirección (2)
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Carga Académica (Horario)'), 1, 'JefaDepartamento');
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Carga Académica (Horario)'), 2, 'Subdireccion');
+
+-- K. CARTA EXCLUSIVIDAD -> Docente (Aunque se auto-firma, definimos la ruta para que exista)
+INSERT INTO RutaFirma (TipoID, Orden, RolResponsable) 
+VALUES ((SELECT TipoID FROM TiposDocumento WHERE NombreVisible = 'Carta de Exclusividad Laboral'), 1, 'Docente');
+
+PRINT '✅ Rutas de firma corregidas y verificadas.';
+GO
+GO
