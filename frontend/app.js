@@ -10,8 +10,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // 2. CARGAR CATÁLOGO INTELIGENTE (ACTUALIZADO)
     async function cargarCatalogo() {
         const container = document.querySelector('.catalog-container');
-        
-        // Si no existe el contenedor (estamos en otra página) o es admin, no hacemos nada
         if (!container || !usuario || usuario.Rol === 'Administrativo') return; 
 
         try {
@@ -19,74 +17,62 @@ document.addEventListener('DOMContentLoaded', () => {
             const documentos = await response.json();
 
             let html = '';
+            documentos.forEach(doc => {
+                const encodedName = encodeURIComponent(doc.nombre);
+                
+                // Generación dinámica siempre
+                let rutaApi = `http://localhost:3000/api/generar-constancia?nombre=${encodeURIComponent(usuario.NombreDocente)}&tipo=${encodeURIComponent(doc.nombre)}&idDoc=0`;
+                
+                // Excepción SOLO para Convocatoria (estático)
+                if (doc.nombre.includes('Convocatoria')) {
+                     rutaApi = `Recursos-img/${doc.ruta}`;
+                }
+                
+                const encodedPath = encodeURIComponent(rutaApi);
+                let botonAccion = '';
 
-            if (documentos.length === 0) {
-                html = '<p style="text-align:center; font-size: 18px; color: #666; padding: 20px;">No se encontraron documentos disponibles.</p>';
-            } else {
-                documentos.forEach(doc => {
-                    const encodedName = encodeURIComponent(doc.nombre);
+                // --- CASO 1: BLOQUEADO (PASA EL ERROR) ---
+                if (doc.bloqueadoPorPerfil) {
+                    const errorMsg = encodeURIComponent(doc.bloqueadoPorPerfil);
                     
-                    // CAMBIO IMPORTANTE: Usamos la API para previsualizar lleno
-                    let rutaApi = `http://localhost:3000/api/generar-constancia?nombre=${encodeURIComponent(usuario.NombreDocente)}&tipo=${encodeURIComponent(doc.nombre)}&idDoc=0`;
-                    
-                    // Excepción para documentos estáticos
-                    if (doc.nombre.includes('Convocatoria')) {
-     rutaApi = `Recursos-img/${doc.ruta}`;
-}
-                    
-                    const encodedPath = encodeURIComponent(rutaApi);
-                    let botonAccion = '';
-
-                    // --- CASO 1: BLOQUEADO PERO PERMITIMOS ENTRAR PARA REPORTAR (AMARILLO) ---
-                    if (doc.bloqueadoPorPerfil) {
-                        // Codificamos el error para pasarlo a la siguiente página
-                        const errorMsg = encodeURIComponent(doc.bloqueadoPorPerfil);
-                        
-                        botonAccion = `
-                            <a href="vista-previa-solicitud.html?name=${encodedName}&path=${encodedPath}&error=${errorMsg}" 
-                               class="action-buttons warning-btn" 
-                               style="text-decoration: none; background-color: #f0ad4e; border: 1px solid #eea236; min-width: 160px; justify-content: center;">
-                                <div style="display:flex; flex-direction:column; align-items:center; line-height: 1.2; width:100%;">
-                                    <span class="obtain-text" style="color: white; font-size: 14px; font-weight: 800; margin:0;">REVISAR</span>
-                                    <span style="color: #fff; font-size: 10px;">Faltan Datos</span>
-                                </div>
-                                <span style="font-size: 20px; margin-left: 8px; color: white;">⚠️</span>
-                            </a>
-                        `;
-                    } 
-                    // --- CASO 2: YA SOLICITADO (Gris Neutro - No Clicable) ---
-                    else if (doc.yaSolicitado) {
-                        botonAccion = `
-                            <div class="action-buttons" 
-                                 style="background-color: #cccccc; border: 1px solid #999; cursor: default;">
-                                <span class="obtain-text" style="color: #555; font-weight:bold;">Solicitado</span>
-                                <span style="font-size: 20px; margin-left: 10px; filter: grayscale(100%);">✅</span>
+                    botonAccion = `
+                        <a href="vista-previa-solicitud.html?name=${encodedName}&path=${encodedPath}&error=${errorMsg}" 
+                           class="action-buttons warning-btn" 
+                           style="text-decoration: none; background-color: #f0ad4e; border: 1px solid #eea236; min-width: 160px; justify-content: center;">
+                            <div style="display:flex; flex-direction:column; align-items:center; line-height: 1.2; width:100%;">
+                                <span class="obtain-text" style="color: white; font-size: 14px; font-weight: 800; margin:0;">REVISAR</span>
+                                <span style="color: #fff; font-size: 10px;">Faltan Datos</span>
                             </div>
-                        `;
-                    } 
-                    // --- CASO 3: DISPONIBLE (Azul - Clicable) ---
-                    else {
-                        botonAccion = `
-                            <a href="vista-previa-solicitud.html?name=${encodedName}&path=${encodedPath}" class="action-buttons" style="text-decoration: none; color: inherit;">
-                                <span class="obtain-text">Obtener</span>
-                                <img class="action-icon" src="Recursos-img/image 36.png" alt="Solicitar" />
-                            </a>
-                        `;
-                    }
+                            <span style="font-size: 20px; margin-left: 8px; color: white;">⚠️</span>
+                        </a>
+                    `;
+                } 
+                else if (doc.yaSolicitado) {
+                    botonAccion = `
+                        <div class="action-buttons" style="background-color: #cccccc; border: 1px solid #999; cursor: default;">
+                            <span class="obtain-text" style="color: #555; font-weight:bold;">Solicitado</span>
+                            <span style="font-size: 20px; margin-left: 10px; filter: grayscale(100%);">✅</span>
+                        </div>
+                    `;
+                } 
+                else {
+                    botonAccion = `
+                        <a href="vista-previa-solicitud.html?name=${encodedName}&path=${encodedPath}" class="action-buttons" style="text-decoration: none; color: inherit;">
+                            <span class="obtain-text">Obtener</span>
+                            <img class="action-icon" src="Recursos-img/image 36.png" alt="Solicitar" />
+                        </a>
+                    `;
+                }
 
-                    html += `
-                    <div class="catalog-row">
-                        <span class="documento-text">${doc.nombre}</span>
-                        ${botonAccion}
-                    </div>`;
-                });
-            }
+                html += `
+                <div class="catalog-row">
+                    <span class="documento-text">${doc.nombre}</span>
+                    ${botonAccion}
+                </div>`;
+            });
             container.innerHTML = html;
 
-        } catch (error) {
-            console.error("Error cargando catálogo:", error);
-            container.innerHTML = '<p style="text-align:center; color:red; padding: 20px;">Error de conexión al cargar el catálogo.</p>';
-        }
+        } catch (error) { console.error(error); }
     }
 
     // 3. CARGAR MIS DOCUMENTOS (Pendientes y Completados)

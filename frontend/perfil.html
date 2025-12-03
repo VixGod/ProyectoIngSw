@@ -4,8 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>DELTA - Mi Perfil</title>
-    <link rel="stylesheet" href="inicio.css">
-</head>
+    <link rel="stylesheet" href="inicio.css"> </head>
 <body>
     <div class="main-container">
         <header class="header">
@@ -19,83 +18,63 @@
             
             <div class="user-info">
                 <span class="bienvenida-norma-rebeca" id="header-username">Cargando...</span>
-                
-                <img class="notification-icon" src="Recursos-img/image 40.png" alt="Icono de Notificación" />
                 <div class="profile-container" id="profile-btn">
-                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Icono de Perfil" />
+                    <img class="user-icon" src="Recursos-img/image 13.png" alt="Perfil" />
                 </div>
-
                 <div class="profile-menu hidden" id="profile-menu">
-                    <button class="close-btn" id="close-menu-btn">
-                        <span style="font-size: 20px; color: #333;">&times;</span>
-                    </button>
-                    
-                    <div class="menu-item" data-href="perfil.html">
-                        <img class="menu-icon" src="Recursos-img/image 31.png" alt="Mi Perfil" />
-                        <span>Mi Perfil</span>
-                    </div>
-                    
-                    <div class="menu-item">
-                        <img class="menu-icon" src="Recursos-img/image 32.png" alt="Ayuda y Soporte" />
-                        <span>Ayuda y Soporte</span>
-                    </div>
-                    
-                    <div class="menu-item logout">
-                        <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesión" />
-                        <span>Cerrar Sesión</span>
-                    </div>
+                    <button class="close-btn" id="close-menu-btn"><span>&times;</span></button>
+                    <div class="menu-item" data-href="perfil.html"><span>Mi Perfil</span></div>
+                    <div class="menu-item logout"><span>Cerrar Sesión</span></div>
                 </div>
             </div>
         </header>
 
         <div class="page-content">
             <nav class="sidebar">
-                <a href="#" class="nav-item" data-href="inicio.html">
-                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Icono Inicio" />
-                    <span class="nav-text">Inicio</span>
-                </a>
-                <a href="#" class="nav-item" data-href="Documentos.html">
-                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Icono Documentos" />
-                    <span class="nav-text">Documentos</span>
-                </a>
-
-                 <a href="#" class="nav-item active" data-href="mis-reportes.html">
-                    <img class="nav-icon" src="Recursos-img/informe.png" alt="Documentos" />
-                    <span class="nav-text">Quejas</span>
-                </a>
-
+                <a href="inicio.html" class="nav-item"><img class="nav-icon" src="Recursos-img/image 4.png" alt="Inicio" /><span class="nav-text">Inicio</span></a>
+                <a href="documentos.html" class="nav-item"><img class="nav-icon" src="Recursos-img/image 5.png" alt="Documentos" /><span class="nav-text">Documentos</span></a>
+                <a href="mis-reportes.html" class="nav-item active"><img class="nav-icon" src="Recursos-img/informe.png" alt="Quejas" /><span class="nav-text">Quejas</span></a>
             </nav>
 
             <main class="content-area profile-view">
-                <h1 class="page-title">Mi Perfil</h1>
+                <h1 class="page-title">Mi Perfil Docente</h1>
 
                 <div class="profile-card">
-                    
                     <div class="profile-photo-area">
                         <div class="photo-frame">
                             <div class="avatar-inner-circle">
                                 <img class="profile-avatar" src="Recursos-img/image 51.png" alt="Avatar" />
                             </div>
                         </div>
-                        <span class="profile-name-footer" id="card-name-short">...</span>
+                        <span class="profile-name-footer" id="card-name-short">DOCENTE</span>
                     </div>
 
                     <div class="personal-info-area">
-                        <h2 class="info-title">Mi información personal</h2>
+                        <h2 class="info-title">Información Personal</h2>
 
                         <div class="info-group">
                             <span class="info-label">Nombre Completo</span>
-                            <span class="info-value primary-color" id="card-name-full">Cargando información...</span>
+                            <span class="info-value primary-color" id="card-name-full">...</span>
                         </div>
-                        
                         <div class="info-group">
                             <span class="info-label">Correo Electrónico</span>
                             <span class="info-value primary-color" id="card-email">...</span>
                         </div>
-                        
                         <div class="info-group">
-                            <span class="info-label">Departamento:</span>
+                            <span class="info-label">Departamento</span>
                             <span class="info-value primary-color" id="card-depto">...</span>
+                        </div>
+
+                        <div class="signature-section">
+                            <h3 class="signature-title">Firma Digital</h3>
+                            
+                            <div class="signature-preview-box" id="signature-display">
+                                <span style="color:#ccc;">Sin firma cargada</span>
+                            </div>
+
+                            <input type="file" id="signature-input" accept="image/png, image/jpeg" style="display: none;">
+                            <button class="btn-add-signature" id="btn-add-signature">Cargar / Cambiar Firma</button>
+                            <p id="firma-msg" class="alert-firma"></p>
                         </div>
                     </div>
                 </div>
@@ -104,5 +83,66 @@
     </div>
     
     <script src="app.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const usuarioStr = localStorage.getItem('usuarioActivo');
+            if(!usuarioStr) { window.location.href = 'login.html'; return; }
+            
+            const usuario = JSON.parse(usuarioStr);
+            const display = document.getElementById('signature-display');
+            const btnAdd = document.getElementById('btn-add-signature');
+            const input = document.getElementById('signature-input');
+
+            // 1. Mostrar firma si ya existe en la sesión
+            if(usuario.FirmaDigital) {
+                display.innerHTML = `<img src="${usuario.FirmaDigital}" class="signature-img-preview" alt="Firma" />`;
+                btnAdd.textContent = "Cambiar Firma";
+            }
+
+            // 2. Manejar Carga
+            btnAdd.addEventListener('click', () => input.click());
+
+            input.addEventListener('change', (e) => {
+                const file = e.target.files[0];
+                if(!file) return;
+
+                const reader = new FileReader();
+                reader.onload = async function(evt) {
+                    const base64 = evt.target.result;
+                    display.innerHTML = `<img src="${base64}" class="signature-img-preview" alt="Vista previa" />`;
+                    btnAdd.textContent = "Guardando...";
+                    btnAdd.disabled = true;
+
+                    try {
+                        const res = await fetch('http://localhost:3000/api/guardar-firma-perfil', {
+                            method: 'POST',
+                            headers: {'Content-Type': 'application/json'},
+                            body: JSON.stringify({
+                                idUsuario: usuario.DocenteID,
+                                rol: 'Docente', // Rol Docente
+                                firmaBase64: base64
+                            })
+                        });
+                        const data = await res.json();
+                        
+                        if(data.success) {
+                            alert("✅ Firma guardada correctamente.");
+                            // Actualizar sesión local para que no se pierda al recargar
+                            usuario.FirmaDigital = base64;
+                            localStorage.setItem('usuarioActivo', JSON.stringify(usuario));
+                        } else {
+                            alert("Error: " + data.message);
+                        }
+                    } catch(err) {
+                        alert("Error de conexión");
+                    } finally {
+                        btnAdd.textContent = "Cambiar Firma";
+                        btnAdd.disabled = false;
+                    }
+                };
+                reader.readAsDataURL(file);
+            });
+        });
+    </script>
 </body>
 </html>

@@ -25,6 +25,9 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
             
             // Guardamos los datos del docente en el navegador para usarlos mas adelante con los documentos
             localStorage.setItem('usuarioActivo', JSON.stringify(data.docente));
+            if (data.docente.FirmaDigital) {
+        console.log("Firma recuperada de la Base de Datos");
+    }
 
             // Redirigimos a la siguiente página (catalogo.html)
             window.location.href = 'inicio.html'; 

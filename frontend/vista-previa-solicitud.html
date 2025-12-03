@@ -34,10 +34,6 @@
                         <img class="menu-icon" src="Recursos-img/image 31.png" alt="Mi Perfil" />
                         <span>Mi Perfil</span>
                     </div>
-                    <div class="menu-item">
-                        <img class="menu-icon" src="Recursos-img/image 32.png" alt="Ayuda y Soporte" />
-                        <span>Ayuda y Soporte</span>
-                    </div>
                     <div class="menu-item logout">
                         <img class="menu-icon" src="Recursos-img/image 33.png" alt="Cerrar Sesión" />
                         <span>Cerrar Sesión</span>
@@ -48,21 +44,9 @@
 
         <div class="page-content">
             <nav class="sidebar">
-                <a href="#" class="nav-item active" data-href="inicio.html">
-                    <img class="nav-icon" src="Recursos-img/image 4.png" alt="Icono Inicio" />
-                    <span class="nav-text">Inicio</span>
-                </a>
-                <a href="#" class="nav-item" data-href="documentos.html">
-                    <img class="nav-icon" src="Recursos-img/image 5.png" alt="Icono Documentos" />
-                    <span class="nav-text">Documentos</span>
-                </a>
-                 <a href="#" class="nav-item active" data-href="mis-reportes.html">
-                    <img class="nav-icon" src="Recursos-img/informe.png" alt="Documentos" />
-                    <span class="nav-text">Quejas</span>
-                </a>
-                <a href="#" class="nav-item nav-footer">
-                    <img class="nav-icon" src="Recursos-img/image 8.png" alt="Icono Footer" />
-                </a>
+                <a href="inicio.html" class="nav-item"><img class="nav-icon" src="Recursos-img/image 4.png" alt="Inicio" /><span class="nav-text">Inicio</span></a>
+                <a href="documentos.html" class="nav-item"><img class="nav-icon" src="Recursos-img/image 5.png" alt="Documentos" /><span class="nav-text">Documentos</span></a>
+                <a href="mis-reportes.html" class="nav-item active"><img class="nav-icon" src="Recursos-img/informe.png" alt="Quejas" /><span class="nav-text">Quejas</span></a>
             </nav>
 
             <main class="content-area">
@@ -76,8 +60,7 @@
                         <div style="width: 50px;"></div> 
                     </div>
                     
-                    <div class="document-frame">
-                        </div>
+                    <div class="document-frame"></div>
                 </div>
 
                 <div class="download-button-container action-buttons-wrapper">
@@ -99,9 +82,7 @@
         <div class="modal-content">
             <h3 class="modal-title" style="color: #d9534f;">Reportar Error en Datos</h3>
             <p>Describe qué dato está incorrecto en la vista previa:</p>
-            
-            <textarea id="txt-motivo-error" class="modal-textarea" placeholder="Ejemplo: Mi apellido materno está mal escrito, debería ser..."></textarea>
-            
+            <textarea id="txt-motivo-error" class="modal-textarea" placeholder="Ejemplo: Mis horas no están completas..."></textarea>
             <div class="modal-buttons">
                 <button class="btn-modal-primary" id="btn-enviar-reporte">Enviar Reporte</button>
                 <button class="btn-modal-secondary" id="btn-cancelar-reporte">Cancelar</button>
@@ -109,196 +90,140 @@
         </div>
     </div>
 
+    <div class="modal-overlay hidden" id="modal-firma">
+        <div class="modal-content" style="border-top: 5px solid #f0ad4e;">
+            <h3 class="modal-title" style="color: #1B396A;">⚠️ Firma Digital Requerida</h3>
+            <p style="font-size: 16px; margin-bottom: 20px; line-height: 1.5;">
+                Este documento requiere tu firma autógrafa digitalizada.
+                <br><br>
+                Por favor, ve a tu perfil y sube una imagen de tu firma para continuar.
+            </p>
+            <div class="modal-buttons">
+                <button class="btn-modal-primary" onclick="window.location.href='perfil.html'">Ir a Mi Perfil</button>
+                <button class="btn-modal-secondary" id="btn-cancelar-firma">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
     <script src="app.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', async () => {
-            // 1. OBTENER DATOS DE LA URL
             const params = new URLSearchParams(window.location.search);
             const docName = decodeURIComponent(params.get('name') || 'Documento');
             let docUrl = decodeURIComponent(params.get('path') || '');
-            
-            // CAPTURAR EL ERROR SI EXISTE (DE APP.JS)
             const errorBloqueo = decodeURIComponent(params.get('error') || '');
 
             const usuarioStr = localStorage.getItem('usuarioActivo');
             const usuario = usuarioStr ? JSON.parse(usuarioStr) : null;
 
-            // Elementos del DOM
             const documentTitleElement = document.getElementById('document-title');
             const documentFrame = document.querySelector('.document-frame'); 
             const requestBtn = document.getElementById('request-doc-btn');
             const reportBtn = document.getElementById('btn-reportar-error');
             
-            // Elementos del Modal
-            const modal = document.getElementById('modal-reporte');
-            const btnEnviarReporte = document.getElementById('btn-enviar-reporte');
-            const btnCancelarReporte = document.getElementById('btn-cancelar-reporte');
-            const txtMotivo = document.getElementById('txt-motivo-error');
-
-            // --- INICIALIZACIÓN ---
-            documentTitleElement.textContent = `Solicitar: ${docName}`;
+            // Modales
+            const modalReporte = document.getElementById('modal-reporte');
+            const modalFirma = document.getElementById('modal-firma');
             
-            // Estado inicial del botón confirmar: Deshabilitado
-            requestBtn.disabled = true;
-            requestBtn.style.opacity = "0.5";
-            requestBtn.style.cursor = "not-allowed";
-            requestBtn.innerHTML = "Cargando...";
+            // Inicialización
+            documentTitleElement.textContent = `Solicitar: ${docName}`;
+            if (!usuario) { window.location.href = 'login.html'; return; }
 
-            if (!usuario) {
-                alert("Error: Debes iniciar sesión.");
-                window.location.href = 'login.html';
-                return;
-            }
-
-            // 2. LÓGICA DE BLOQUEO POR DATOS FALTANTES
+            // 1. LÓGICA DE BLOQUEO (GRIS)
             let bloqueoActivo = false;
-
-            if (errorBloqueo && errorBloqueo !== 'null' && errorBloqueo !== '') {
+            if (errorBloqueo && errorBloqueo !== 'null' && errorBloqueo !== 'undefined' && errorBloqueo !== '') {
                 bloqueoActivo = true;
-                
-                // A) Insertar aviso visual ROJO arriba del documento
                 const alertaDiv = document.createElement('div');
-                alertaDiv.style.cssText = "background-color: #f8d7da; color: #721c24; padding: 15px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #f5c6cb; text-align: center; width: 90%; max-width: 1000px;";
-                alertaDiv.innerHTML = `
-                    <strong>⚠️ Atención: Documento con datos incompletos.</strong><br>
-                    El sistema detectó: <em>${errorBloqueo}</em>.<br>
-                    <span style="font-size:12px;">Por favor, utiliza el botón rojo "Reportar Dato Incorrecto" para solicitar la corrección.</span>
-                `;
-                
-                const container = document.querySelector('.document-viewer-container');
-                container.insertBefore(alertaDiv, documentFrame);
+                alertaDiv.style.cssText = "background-color: #f8d7da; color: #721c24; padding: 15px; margin-bottom: 15px; border-radius: 5px; border: 1px solid #f5c6cb; text-align: center; width: 90%; max-width: 1000px; font-weight: bold;";
+                alertaDiv.innerHTML = `⚠️ NO SE PUEDE SOLICITAR:<br>${errorBloqueo}`;
+                document.querySelector('.document-viewer-container').insertBefore(alertaDiv, documentFrame);
 
-                // B) Deshabilitar permanentemente el botón de Confirmar
-                requestBtn.style.backgroundColor = "#ccc";
-                requestBtn.innerHTML = "Bloqueado por Datos";
-                // Quitamos el ID para evitar clicks accidentales si la lógica fallara
-                requestBtn.id = "btn-disabled-forever";
+                requestBtn.disabled = true;
+                requestBtn.style.backgroundColor = "#cccccc";
+                requestBtn.style.cursor = "not-allowed";
+                requestBtn.innerHTML = "🚫 Bloqueado por Datos";
+                requestBtn.onclick = null;
             }
 
-            // 3. CARGAR EL DOCUMENTO
+            // 2. CARGAR DOCUMENTO
             if (docUrl) {
                 const urlNoCache = docUrl.includes('?') ? `${docUrl}&t=${Date.now()}` : `${docUrl}?t=${Date.now()}`;
-                
                 try {
                     const response = await fetch(urlNoCache);
-
                     if (response.ok) {
-                        // Renderizar
                         if (docUrl.toLowerCase().includes('.pdf') || docUrl.includes('api/')) {
                             documentFrame.innerHTML = `<iframe src="${urlNoCache}#toolbar=0&navpanes=0&view=FitH" width="100%" height="100%" style="border: none;"></iframe>`;
                         } else {
                             documentFrame.innerHTML = `<img class="document-image" src="${urlNoCache}" alt="Vista previa" />`;
                         }
-
-                        // SOLO HABILITAR SI NO HAY BLOQUEO
-                        if (!bloqueoActivo) {
-                            requestBtn.disabled = false;
-                            requestBtn.style.opacity = "1";
-                            requestBtn.style.cursor = "pointer";
-                            requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
-                        }
-
-                    } else {
-                        throw new Error(`El servidor respondió: ${response.status}`);
-                    }
-
-                } catch (error) {
-                    console.error("Error cargando documento:", error);
-                    documentFrame.innerHTML = `<p style="color:red; text-align:center;">No se pudo cargar el documento: ${error.message}</p>`;
-                    if(!bloqueoActivo) requestBtn.innerHTML = "❌ Error de Carga";
-                }
-            } else {
-                documentFrame.innerHTML = '<p>No se especificó un documento.</p>';
+                    } else { throw new Error(`Error carga: ${response.status}`); }
+                } catch (error) { documentFrame.innerHTML = `<p style="color:red; text-align:center;">Error al cargar vista previa.</p>`; }
             }
 
-            // 4. LÓGICA DE CONFIRMACIÓN (BOTÓN VERDE)
-            if (requestBtn && requestBtn.id === 'request-doc-btn') {
+            // 3. CONFIRMACIÓN
+            if (!bloqueoActivo) {
                 requestBtn.onclick = async () => {
-                    if (requestBtn.disabled || bloqueoActivo) return;
+                    if (requestBtn.disabled) return;
 
-                    if (confirm(`¿Estás seguro de que deseas solicitar el documento: "${docName}"?`)) {
+                    // --- VALIDACIÓN DE FIRMA (NUEVO) ---
+                    // Si es Exclusividad y no tiene firma en localStorage, abrimos el modal
+                    if ((docName.includes('Exclusividad') || docName.includes('Cédula')) && !usuario.FirmaDigital) {
+    modalFirma.classList.remove('hidden');
+    return;
+}
+
+                    if (confirm(`¿Confirmar solicitud de: "${docName}"?`)) {
                         requestBtn.disabled = true;
-                        requestBtn.innerHTML = "Procesando...";
-                        
+                        requestBtn.innerHTML = "Enviando...";
                         try {
                             const response = await fetch('http://localhost:3000/api/solicitar-documento', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
-                                body: JSON.stringify({
-                                    idDocente: usuario.DocenteID,
-                                    nombreDocumento: docName
-                                })
+                                body: JSON.stringify({ idDocente: usuario.DocenteID, nombreDocumento: docName })
                             });
-
                             const result = await response.json();
 
                             if (result.success) {
-                                alert("¡Solicitud enviada exitosamente!");
+                                alert("✅ ¡Solicitud enviada exitosamente!");
                                 window.location.href = 'inicio.html'; 
                             } else {
-                                alert("Error: " + result.message);
-                                requestBtn.disabled = false;
-                                requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
+                                // Si el backend rechaza por firma (doble check), mostramos modal
+                                if(result.message.includes("FIRMA DIGITAL")) {
+                                    modalFirma.classList.remove('hidden');
+                                    requestBtn.disabled = false;
+                                    requestBtn.innerHTML = 'Confirmar Solicitud';
+                                } else {
+                                    alert("Error: " + result.message);
+                                    requestBtn.disabled = false;
+                                    requestBtn.innerHTML = 'Confirmar Solicitud';
+                                }
                             }
                         } catch (error) {
                             alert("Error de conexión.");
                             requestBtn.disabled = false;
-                            requestBtn.innerHTML = '<span class="check-icon">&#10003;</span> Confirmar Solicitud';
+                            requestBtn.innerHTML = 'Confirmar Solicitud';
                         }
                     }
                 };
             }
 
-            // 5. LÓGICA DE REPORTE (BOTÓN ROJO Y MODAL)
-            
-            // Abrir Modal
-            reportBtn.onclick = () => {
-                modal.classList.remove('hidden');
-                txtMotivo.value = ''; 
-                txtMotivo.focus();
-            };
+            // 4. LÓGICA DE MODALES
+            reportBtn.onclick = () => { document.getElementById('modal-reporte').classList.remove('hidden'); };
+            document.getElementById('btn-cancelar-reporte').onclick = () => { document.getElementById('modal-reporte').classList.add('hidden'); };
+            document.getElementById('btn-cancelar-firma').onclick = () => { modalFirma.classList.add('hidden'); };
 
-            // Cerrar Modal
-            btnCancelarReporte.onclick = () => {
-                modal.classList.add('hidden');
-            };
-
-            // Enviar Reporte
-            btnEnviarReporte.onclick = async () => {
-                const motivo = txtMotivo.value.trim();
-                if (!motivo) return alert("Por favor describe el error.");
-
-                btnEnviarReporte.textContent = "Enviando...";
-                btnEnviarReporte.disabled = true;
-
+            document.getElementById('btn-enviar-reporte').onclick = async () => {
+                const txt = document.getElementById('txt-motivo-error');
+                if(!txt.value.trim()) return alert("Describe el error.");
                 try {
-                    const response = await fetch('http://localhost:3000/api/reportar-error', {
+                    await fetch('http://localhost:3000/api/reportar-error', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            idDocente: usuario.DocenteID,
-                            nombreDocumento: docName,
-                            mensaje: motivo
-                        })
+                        body: JSON.stringify({ idDocente: usuario.DocenteID, nombreDocumento: docName, mensaje: txt.value })
                     });
-
-                    const result = await response.json();
-
-                    if (result.success) {
-                        alert("✅ Reporte enviado correctamente.");
-                        modal.classList.add('hidden');
-                        window.location.href = 'mis-reportes.html'; // Redirigir para que vea su reporte
-                    } else {
-                        alert("Error al enviar reporte: " + result.message);
-                    }
-
-                } catch (error) {
-                    console.error(error);
-                    alert("Error de conexión con el servidor.");
-                } finally {
-                    btnEnviarReporte.textContent = "Enviar Reporte";
-                    btnEnviarReporte.disabled = false;
-                }
+                    alert("Reporte enviado.");
+                    document.getElementById('modal-reporte').classList.add('hidden');
+                } catch(e) { alert("Error al enviar."); }
             };
         });
     </script>
