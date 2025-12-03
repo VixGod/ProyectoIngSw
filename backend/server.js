@@ -16,6 +16,8 @@ const { llenarExencion } = require('./documentos/docExencion');
 const { llenarServicios } = require('./documentos/docServicios');
 const { llenarAcreditacion } = require('./documentos/docAcreditacion');
 const { llenarCargaAcademica } = require('./documentos/docCargaAcademica');
+const { llenarExclusividad } = require('./documentos/docExclusividad');
+const { llenarCedula } = require('./documentos/docCedula');
 
 const app = express();
 app.use(cors());
@@ -80,116 +82,149 @@ app.get('/api/catalogo-inteligente', async (req, res) => {
         const pool = await poolPromise;
         const idDocente = req.query.id; 
 
-        // 1. DATOS Y CONSULTAS
-        const perfilQuery = await pool.request().input('id', idDocente).query("SELECT * FROM Docente WHERE DocenteID = @id");
+        // 1. OBTENER PERFIL Y DOCUMENTOS
+        const perfilQuery = await pool.request().input('id', sql.Int, idDocente).query("SELECT * FROM Docente WHERE DocenteID = @id");
         if (perfilQuery.recordset.length === 0) return res.json([]); 
         const perfil = perfilQuery.recordset[0];
 
         const tiposDocs = await pool.request().query("SELECT * FROM TiposDocumento");
         const listaTodos = tiposDocs.recordset;
 
-        // Consultas auxiliares
-        const qTutor = await pool.request().input('id', idDocente).query("SELECT SUM(CantTutorados) as Total FROM Tutorados WHERE DocenteID = @id");
-        const totalTutorados = qTutor.recordset[0].Total || 0;
-        
-        const qGrupo = await pool.request().input('id', idDocente).query(`SELECT M.Estrategia FROM Grupo G INNER JOIN GrupoMateria GM ON G.GrupoID = GM.GrupoID INNER JOIN Materia M ON GM.MateriaID = M.MateriaID WHERE G.DocenteID = @id`);
-        const datosGrupo = qGrupo.recordset;
-        
-        const qAdmin = await pool.request().input('id', idDocente).query("SELECT NumDict FROM ActividadAdministrativa WHERE DocenteID = @id");
-        const datosAdmin = qAdmin.recordset;
-
-        const historialQ = await pool.request().input('id', idDocente).query(`SELECT Doc.TipoDoc FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID WHERE Exp.DocenteID = @id`);
+        const historialQ = await pool.request().input('id', sql.Int, idDocente).query(`SELECT Doc.TipoDoc FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID WHERE Exp.DocenteID = @id`);
         const docsYaPedidos = historialQ.recordset.map(d => d.TipoDoc.trim());
 
-        // --- 2. CÁLCULO DE VALIDACIONES GLOBALES ---
-        const esAdministrativo = perfil.Rol && perfil.Rol !== 'Docente';
-        const horasClase = datosGrupo.length * 5; 
-        const cumpleHorasAdmin = !esAdministrativo || (esAdministrativo && horasClase >= 4);
+        // --- CONSTANTES DE EVALUACIÓN ---
+        const ANIO_EVALUAR = "2024";
+        const ANIO_ACTUAL = "2025";
 
-        // A. Antigüedad (Art. 20a)
+        // --- 2. CONSULTAS DE VALIDACIÓN (Lógica Robusta) ---
+
+        // A. CÁLCULO DE HORAS EXACTAS (Usando minutos para evitar errores de redondeo)
+        const qHoras = `
+            SELECT Periodo, SUM(Minutos)/60.0 as Horas FROM (
+                -- 1. Clases
+                SELECT P.NombrePeriodo as Periodo, ISNULL(DATEDIFF(MINUTE, H.HoraInicioAct, H.HoraFinAct), 0) as Minutos
+                FROM HorarioActividad H
+                JOIN GrupoMateria GM ON H.ActividadID = GM.GrupoMateriaID AND H.TipoActividad = 'GrupoMateria'
+                JOIN Grupo G ON GM.GrupoID = G.GrupoID
+                JOIN Materia M ON GM.MateriaID = M.MateriaID
+                JOIN PeriodoEscolar P ON M.PeriodoID = P.PeriodoID
+                WHERE G.DocenteID = @id AND P.NombrePeriodo NOT LIKE '%VERANO%'
+                
+                UNION ALL
+                
+                -- 2. Apoyo
+                SELECT P.NombrePeriodo as Periodo, ISNULL(DATEDIFF(MINUTE, H.HoraInicioAct, H.HoraFinAct), 0) as Minutos
+                FROM HorarioActividad H
+                JOIN ApoyoADocencia A ON H.ActividadID = A.ActApoyoID AND H.TipoActividad = 'ApoyoADocencia'
+                JOIN PeriodoEscolar P ON A.PeriodoID = P.PeriodoID
+                WHERE A.DocenteID = @id AND P.NombrePeriodo NOT LIKE '%VERANO%'
+
+                UNION ALL
+
+                -- 3. Administrativas
+                SELECT P.NombrePeriodo as Periodo, ISNULL(DATEDIFF(MINUTE, H.HoraInicioAct, H.HoraFinAct), 0) as Minutos
+                FROM HorarioActividad H
+                JOIN ActividadAdministrativa AD ON H.ActividadID = AD.ActAdmID AND H.TipoActividad = 'ActividadAdministrativa'
+                JOIN PeriodoEscolar P ON AD.PeriodoID = P.PeriodoID
+                WHERE AD.DocenteID = @id AND P.NombrePeriodo NOT LIKE '%VERANO%'
+            ) as TablaHoras
+            GROUP BY Periodo
+        `;
+
+        const resHoras = await pool.request().input('id', sql.Int, idDocente).query(qHoras);
+        
+        let h24_1 = 0, h24_2 = 0, h25_1 = 0;
+        resHoras.recordset.forEach(r => {
+            const p = r.Periodo.toUpperCase();
+            if (p.includes(ANIO_EVALUAR) && (p.includes('ENE') || p.includes('JUN') || p.includes('ENERO'))) h24_1 += r.Horas;
+            if (p.includes(ANIO_EVALUAR) && (p.includes('AGO') || p.includes('DIC') || p.includes('DICIEMBRE'))) h24_2 += r.Horas;
+            if (p.includes(ANIO_ACTUAL) && (p.includes('ENE') || p.includes('JUN') || p.includes('ENERO'))) h25_1 += r.Horas;
+        });
+
+        // REGLA HORAS: Se pide aprox 40hrs. Usamos 35 como margen de seguridad.
+        const cumpleHoras = (h24_1 >= 35 && h24_2 >= 35 && h25_1 >= 35);
+        const tieneCargaAnual = (h24_1 > 0 || h24_2 > 0); // Para saber si dio clases
+
+        // B. TUTORÍAS (Existencia en 2024)
+        const qTut = `SELECT COUNT(*) as C FROM Tutorados T JOIN PeriodoEscolar P ON T.PeriodoID=P.PeriodoID WHERE T.DocenteID=@id AND P.NombrePeriodo LIKE '%`+ANIO_EVALUAR+`%'`;
+        const resTut = await pool.request().input('id', sql.Int, idDocente).query(qTut);
+        const tieneTutorias = resTut.recordset[0].C > 0;
+
+        // C. CRÉDITOS / ACTIVIDAD ADMINISTRATIVA (Existencia en 2024)
+        const qCred = `SELECT COUNT(*) as C FROM ActividadAdministrativa A JOIN PeriodoEscolar P ON A.PeriodoID=P.PeriodoID WHERE A.DocenteID=@id AND P.NombrePeriodo LIKE '%`+ANIO_EVALUAR+`%'`;
+        const resCred = await pool.request().input('id', sql.Int, idDocente).query(qCred);
+        const tieneCreditos = resCred.recordset[0].C > 0;
+
+        // D. REGLAS DE PERFIL
         const anioActual = new Date().getFullYear();
+        const fechaLimite = new Date(`${anioActual - 1}-01-16`); 
         const fechaIngreso = perfil.FechaIngreso ? new Date(perfil.FechaIngreso) : new Date();
-        const fechaLimiteAntiguedad = new Date(`${anioActual - 1}-01-16`); 
-        const cumpleAntiguedad = fechaIngreso < fechaLimiteAntiguedad;
-
-        // B. Asistencia (Art. 20a y 38h)
+        
+        const cumpleAntiguedad = fechaIngreso < fechaLimite;
         const cumpleAsistencia = (perfil.PorcentajeAsistencia >= 90);
-
-        // C. Evaluación (Art. 20o y 20p)
-        // Asumimos que 70 es la calificación mínima para "SUFICIENTE"
         const cumpleEvaluacion = (perfil.PromedioEvaluacion >= 70);
+        
+        const estatusValido = perfil.TipoPlaza && !perfil.TipoPlaza.includes('(20)'); // Bloquear interinos puros
+        const esTiempoCompleto = (perfil.TipoPlaza || '').toUpperCase().includes('COMPLETO') || (perfil.TipoPlaza || '').toUpperCase().includes('40');
 
-        // D. Estatus (Art. 4)
-        const estatusValido = perfil.TipoPlaza && !perfil.TipoPlaza.includes('(20)');
-
-
-        // --- 3. GENERAR CATÁLOGO ---
+        // --- 3. ARMADO DEL CATÁLOGO ---
         let catalogo = [];
 
         listaTodos.forEach(doc => {
             let motivoBloqueo = null;
             const yaLoTiene = docsYaPedidos.includes(doc.NombreVisible.trim());
+            const nombre = doc.NombreVisible.toUpperCase();
 
-            // =========================================================
-            // REGLAS GLOBALES (BLOQUEO TOTAL SI FALLAN)
-            // =========================================================
-            if (!perfil.CedulaDocente) motivoBloqueo = "Falta Cédula Profesional (Req. Inicio)";
-            
-            else if (!estatusValido) motivoBloqueo = "Tu estatus (20) no participa en el programa.";
-            
-            else if (!cumpleAntiguedad) motivoBloqueo = "No cumples con la antigüedad mínima (1 año).";
-            
-            else if (!cumpleAsistencia) motivoBloqueo = `Asistencia insuficiente (${perfil.PorcentajeAsistencia}%). Mínimo requerido: 90%.`;
-            
-            // ✅ AHORA ES GLOBAL: Si reprueba evaluación, no entra a nada.
-            else if (!cumpleEvaluacion) motivoBloqueo = `Evaluación docente insuficiente (${perfil.PromedioEvaluacion}). Mínimo: 70.`;
+            // 1. VALIDACIONES GLOBALES (Aplican a casi todo)
+            if (!motivoBloqueo) {
+                if (!perfil.CedulaDocente) motivoBloqueo = "Falta Cédula Profesional.";
+                else if (!estatusValido) motivoBloqueo = "Estatus no válido para el programa.";
+                else if (!cumpleAntiguedad) motivoBloqueo = `Antigüedad insuficiente (Ingreso posterior a Ene ${ANIO_EVALUAR}).`;
+                else if (!cumpleAsistencia) motivoBloqueo = `Asistencia insuficiente (${perfil.PorcentajeAsistencia}%). Req: 90%.`;
+                else if (!cumpleEvaluacion) motivoBloqueo = `Evaluación docente baja (${perfil.PromedioEvaluacion}). Req: 70.`;
+            }
 
-            // Regla para Administrativos
-            else if (esAdministrativo && !cumpleHorasAdmin) motivoBloqueo = "Admin requiere mín. 4 hrs frente a grupo.";
-
-
-            // =========================================================
-            // REGLAS ESPECÍFICAS (Solo si pasó las globales)
-            // =========================================================
+            // 2. VALIDACIONES ESPECÍFICAS POR DOCUMENTO
             if (!motivoBloqueo) {
                 
-                if (doc.NombreVisible === 'Constancia Laboral') {
-                    let faltantes = [];
-                    if (!perfil.RFCDocente) faltantes.push('RFC');
-                    if (!perfil.ClavePresupuestal) faltantes.push('Clave P.');
-                    if (!perfil.TipoPlaza) faltantes.push('Plaza');
-                    if (faltantes.length > 0) motivoBloqueo = `Faltan datos: ${faltantes.join(', ')}`;
-                }
-                
-                else if (doc.NombreVisible.includes('Tutoría')) {
-                    if (totalTutorados === 0) motivoBloqueo = "No tienes alumnos tutorados registrados.";
-                }
-                
-                else if (doc.NombreVisible.includes('Estrategias')) {
-                    if (datosGrupo.length === 0) motivoBloqueo = "Sin carga académica (Grupos).";
-                    else {
-                        const sinEstrategia = datosGrupo.some(g => !g.Estrategia || g.Estrategia === '');
-                        if(sinEstrategia) motivoBloqueo = "Falta capturar Estrategias en tus materias.";
-                    }
+                // Horario / Carga Académica
+                if (nombre.includes('CARGA') || nombre.includes('HORARIO')) {
+                    if (!cumpleHoras) motivoBloqueo = `Horas insuficientes (Ene24:${h24_1.toFixed(0)}, Ago24:${h24_2.toFixed(0)}, Ene25:${h25_1.toFixed(0)}). Req: 40h.`;
                 }
 
-                else if (doc.NombreVisible.includes('Recurso') || doc.NombreVisible.includes('Digital')) {
-                    if (datosGrupo.length === 0) motivoBloqueo = "Debes impartir cátedra para generar recursos.";
+                // Tutoría
+                else if (nombre.includes('TUTORÍA')) {
+                    if (!tieneTutorias) motivoBloqueo = `No tienes tutorados registrados en ${ANIO_EVALUAR}.`;
                 }
 
-                else if (doc.RequiereValidacion === 'Administrativa' || doc.NombreVisible.includes('Créditos')) {
-                    if (datosAdmin.length === 0) motivoBloqueo = "Sin actividad administrativa registrada.";
-                    else if (!datosAdmin[0].NumDict) motivoBloqueo = "Falta No. Dictamen de la actividad.";
+                // Estrategias / Recursos (Requieren haber dado clases)
+                else if (nombre.includes('ESTRATEGIAS') || nombre.includes('RECURSO')) {
+                    if (!tieneCargaAnual) motivoBloqueo = `No impartiste clases frente a grupo en ${ANIO_EVALUAR}.`;
                 }
-                
-                else if (doc.NombreVisible.includes('CVU')) {
-                    if (!perfil.Registro) motivoBloqueo = "Falta: No. Registro CVU";
+
+                // Créditos (Monitor)
+                else if (nombre.includes('CRÉDITOS') || nombre.includes('MONITOR')) {
+                    if (!tieneCreditos) motivoBloqueo = `Sin actividad administrativa registrada en ${ANIO_EVALUAR}.`;
                 }
-                
-                else if (doc.NombreVisible.includes('Exclusividad')) {
-                    if (!perfil.TipoPlaza || !perfil.TipoPlaza.toUpperCase().includes('TIEMPO COMPLETO')) {
-                        motivoBloqueo = "Solo para Tiempo Completo.";
+
+                // Servicios Escolares
+                else if (nombre.includes('SERVICIOS')) {
+                    if (!tieneCargaAnual) motivoBloqueo = `Sin carga académica registrada en ${ANIO_EVALUAR}.`;
+                }
+
+                // Constancia Laboral / Exclusividad
+                else if (nombre.includes('LABORAL') || nombre.includes('EXCLUSIVIDAD')) {
+                    if (!esTiempoCompleto) motivoBloqueo = "Tu plaza no es de Tiempo Completo.";
+                    // Validación extra para Laboral
+                    if (nombre.includes('CONSTANCIA LABORAL')) {
+                        if (!perfil.ClavePresupuestal) motivoBloqueo = "Falta Clave Presupuestal en perfil.";
                     }
+                }
+                
+                // CVU
+                else if (nombre.includes('CVU')) {
+                    if (!perfil.Registro) motivoBloqueo = "Falta No. Registro CVU en perfil.";
                 }
             }
 
@@ -203,7 +238,8 @@ app.get('/api/catalogo-inteligente', async (req, res) => {
         });
 
         res.json(catalogo);
-    } catch (err) { console.error("Error catálogo:", err); res.status(500).send("Error del servidor"); }
+
+    } catch (err) { console.error("Error catálogo:", err); res.status(500).send("Error del servidor: " + err.message); }
 });
 
 // ==================================================================
@@ -248,12 +284,48 @@ app.post('/api/solicitar-documento', async (req, res) => {
     const { idDocente, nombreDocumento } = req.body;
     try {
         const pool = await poolPromise;
+        
+        // A. Obtener Expediente
         let exp = await pool.request().input('id', idDocente).query("SELECT ExpedienteID FROM Expediente WHERE DocenteID = @id");
         let expedienteID = (exp.recordset.length > 0) ? exp.recordset[0].ExpedienteID : 
             (await pool.request().input('id', idDocente).query("INSERT INTO Expediente (StatusExp, DocenteID, FechaReg) OUTPUT INSERTED.ExpedienteID VALUES ('Activo', @id, GETDATE())")).recordset[0].ExpedienteID;
 
+        // B. Verificar duplicados
         const existe = await pool.request().input('exp', expedienteID).input('tipo', nombreDocumento).query("SELECT Count(*) as c FROM Documentos WHERE ExpedienteID = @exp AND TipoDoc = @tipo");
         if (existe.recordset[0].c > 0) return res.status(400).json({ success: false, message: "Ya has solicitado este documento." });
+
+        // --- LÓGICA ESPECIAL: CARTA DE EXCLUSIVIDAD (AUTO-FIRMA) ---
+        if (nombreDocumento.includes('Exclusividad') || nombreDocumento.includes('Cédula') || nombreDocumento.includes('Exención')) {
+            // 1. Verificar si el docente tiene firma configurada
+            const qFirma = await pool.request().input('id', idDocente).query("SELECT FirmaDigital FROM Docente WHERE DocenteID = @id");
+            if (qFirma.recordset.length === 0 || !qFirma.recordset[0].FirmaDigital) {
+                return res.status(400).json({ success: false, message: "Para solicitar este documento, primero debes configurar tu FIRMA DIGITAL en 'Mi Perfil'." });
+            }
+            const firmaBase64 = qFirma.recordset[0].FirmaDigital;
+
+            // 2. Insertar Documento como 'Completado' directamente
+            const qDoc = await pool.request()
+                .input('tipo', sql.NVarChar, nombreDocumento)
+                .input('fecha', sql.Date, new Date())
+                .input('status', sql.NVarChar, 'Completado') // ¡Directo a Completado!
+                .input('expId', sql.Int, expedienteID)
+                .query("INSERT INTO Documentos (TipoDoc, FechaDoc, StatusDoc, ExpedienteID) OUTPUT INSERTED.DocumentoID VALUES (@tipo, @fecha, @status, @expId)");
+            
+            const nuevoDocID = qDoc.recordset[0].DocumentoID;
+
+            // 3. Estampar la firma automáticamente en la tabla Firma
+            await pool.request()
+                .input('fecha', sql.Date, new Date())
+                .input('docId', sql.Int, nuevoDocID)
+                .input('tipo', sql.NVarChar, 'Docente') // Quien firma es el Docente
+                .input('firmanteId', sql.Int, idDocente)
+                .input('imagen', sql.NVarChar(sql.MAX), firmaBase64)
+                .query("INSERT INTO Firma (FechaFirma, DocumentoID, TipoFirmante, FirmanteID, FirmaImagen) VALUES (@fecha, @docId, @tipo, @firmanteId, @imagen)");
+
+            return res.json({ success: true, message: "Documento generado y firmado exitosamente. Puedes descargarlo en 'Completados'." });
+        }
+
+        // --- LÓGICA NORMAL (FLUJO DE APROBACIÓN) ---
 
         const rutaInfo = await pool.request().input('nombre', sql.NVarChar, nombreDocumento).query("SELECT TOP 1 R.RolResponsable FROM RutaFirma R INNER JOIN TiposDocumento T ON R.TipoID = T.TipoID WHERE T.NombreVisible = @nombre AND R.Orden = 1");
         let rolResponsable = (rutaInfo.recordset.length > 0) ? rutaInfo.recordset[0].RolResponsable : 'Direccion';
@@ -262,9 +334,9 @@ app.post('/api/solicitar-documento', async (req, res) => {
             .query("INSERT INTO Documentos (TipoDoc, FechaDoc, StatusDoc, ExpedienteID, FirmanteActualID, RolFirmanteActual) VALUES (@tipo, @fecha, @status, @expId, @firmanteId, @rol)");
 
         res.json({ success: true, message: `Solicitud enviada a: ${rolResponsable}` });
+
     } catch (err) { console.error(err); res.status(500).json({ success: false, message: "Error SQL: " + err.message }); }
 });
-
 // ==================================================================
 // 5. FIRMAR DOCUMENTO
 // ==================================================================
@@ -301,209 +373,183 @@ app.post('/api/firmar-documento', async (req, res) => {
 app.get('/api/generar-constancia', async (req, res) => {
     try {
         const pool = await poolPromise;
-        // Limpiamos el nombre por si viene con guiones extra
         const nombreBuscado = req.query.nombre ? req.query.nombre.split(' - ')[0].trim() : ''; 
         const tipoDocumento = req.query.tipo;
         const idSolicitud = req.query.idDoc;
 
-        // 1. OBTENER DATOS (Del Docente o de la Solicitud específica)
         let data = null;
-        if (idSolicitud && idSolicitud !== 'undefined' && idSolicitud !== '0') {
-            const queryPorID = `SELECT D.* FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID INNER JOIN Docente D ON Exp.DocenteID = D.DocenteID WHERE Doc.DocumentoID = @docId`;
-            const result = await pool.request().input('docId', sql.Int, idSolicitud).query(queryPorID);
-            if (result.recordset.length > 0) data = result.recordset[0];
+        if (idSolicitud && idSolicitud !== '0') {
+            const r = await pool.request().input('id', idSolicitud).query(`SELECT D.* FROM Documentos Doc INNER JOIN Expediente Exp ON Doc.ExpedienteID = Exp.ExpedienteID INNER JOIN Docente D ON Exp.DocenteID = D.DocenteID WHERE Doc.DocumentoID = @id`);
+            if (r.recordset.length) data = r.recordset[0];
         }
-        
         if (!data) {
-            const queryPorNombre = `SELECT * FROM Docente WHERE NombreDocente LIKE '%' + @nombre + '%'`;
-            const result = await pool.request().input('nombre', sql.NVarChar, nombreBuscado).query(queryPorNombre);
-            if (result.recordset.length === 0) return res.status(404).send("Docente no encontrado.");
-            data = result.recordset[0];
+            const r = await pool.request().input('nom', nombreBuscado).query(`SELECT * FROM Docente WHERE NombreDocente LIKE '%' + @nom + '%'`);
+            if (r.recordset.length) data = r.recordset[0]; else return res.status(404).send("Docente no encontrado");
         }
 
-        // 2. CARGAR PDF BASE (O verificar configuración)
-   const fileQuery = await pool.request().input('nombreDoc', tipoDocumento).query("SELECT NombreArchivoPDF FROM TiposDocumento WHERE NombreVisible = @nombreDoc");
-        
-        if (fileQuery.recordset.length === 0) {
-            return res.status(404).send(`Documento '${tipoDocumento}' no configurado en BD.`);
-        }
-        
-        let archivoPDF = fileQuery.recordset[0].NombreArchivoPDF;
-        const rutaPDF = path.join(__dirname, '..', 'frontend', 'Recursos-img', archivoPDF); 
-        
+        // Cargar Plantilla (Solo si existe y se necesita)
+        const fQ = await pool.request().input('nom', tipoDocumento).query("SELECT NombreArchivoPDF FROM TiposDocumento WHERE NombreVisible=@nom");
         let fileBytes = null;
-        if (fs.existsSync(rutaPDF)) {
-            fileBytes = fs.readFileSync(rutaPDF);
-        } else {
-            // AQUÍ ESTÁ EL TRUCO: Solo avisamos, NO lanzamos error 404
-            console.log(`⚠️ Archivo base ${archivoPDF} no encontrado. Se asumirá generación desde cero.`);
+        if(fQ.recordset.length) {
+            const p = path.join(__dirname, '..', 'frontend', 'Recursos-img', fQ.recordset[0].NombreArchivoPDF);
+            if(fs.existsSync(p)) fileBytes = fs.readFileSync(p);
         }
 
         let pdfDoc;
         let form;
 
-        // 3. SELECCIÓN DE GENERADOR (ROUTER DE MÓDULOS)
-        
-        // CASO A: Constancia Laboral
-        if (tipoDocumento === 'Constancia Laboral') {
-            if(!fileBytes) return res.status(500).send("Falta plantilla PDF laboral.");
-            pdfDoc = await PDFDocument.load(fileBytes);
-            form = pdfDoc.getForm();
+        // --- GENERACIÓN ---
+
+        // 1. EXCLUSIVIDAD (Desde Cero)
+
+if (tipoDocumento.includes('Exclusividad')) {
+    // CLONAMOS los datos para no afectar otras partes
+    let datosParaGenerar = { ...data };
+
+    // SI ES VISTA PREVIA (idDoc=0), ocultamos la firma para que salga en blanco
+    if (!idSolicitud || idSolicitud === '0') {
+        datosParaGenerar.FirmaDigital = null;
+    }
+
+    // Pasamos 'datosParaGenerar' en lugar de 'data'
+    pdfDoc = await llenarExclusividad(null, datosParaGenerar, pool);
+}
+else if (tipoDocumento.includes('Cédula')) {
+            let datosParaGenerar = { ...data };
+            // Mismo truco de ocultar firma si es vista previa
+            if (!idSolicitud || idSolicitud === '0') datosParaGenerar.FirmaDigital = null;
             
-            const qRH = await pool.request().query("SELECT TOP 1 NombreTitular, ApePatTitular, ApeMatTitular FROM RH");
-            let nombreAdminFirma = "";
-            if (qRH.recordset.length > 0) { 
-                const rh = qRH.recordset[0]; 
-                nombreAdminFirma = `${rh.NombreTitular} ${rh.ApePatTitular} ${rh.ApeMatTitular}`.toUpperCase(); 
-            }
-            await llenarLaboral(form, data, nombreAdminFirma);
-        } 
+            pdfDoc = await llenarCedula(datosParaGenerar);
+        }
+        else if (tipoDocumento.includes('Cédula') || tipoDocumento.includes('Validación')) {
+            
+            // CLONAMOS los datos
+            let datosParaGenerar = { ...data };
 
-        // CASO B: CVU
-        else if (tipoDocumento.includes('CVU')) {
-            if(!fileBytes) return res.status(500).send("Falta plantilla PDF CVU.");
+            // CANDADO: SI ES VISTA PREVIA (idDoc=0), BORRAMOS LA FIRMA TEMPORALMENTE
+            if (!idSolicitud || idSolicitud === '0') {
+                datosParaGenerar.FirmaDigital = null;
+            }
+            
+            pdfDoc = await llenarCedula(datosParaGenerar);
+        }
+        // 2. CONSTANCIA LABORAL (Con Plantilla)
+        else if (tipoDocumento.includes('Laboral')) {
+            if(!fileBytes) throw new Error("Falta plantilla Laboral");
             pdfDoc = await PDFDocument.load(fileBytes);
             form = pdfDoc.getForm();
-            await llenarCVU(form, data, ""); // Firma vacía, se estampa luego
+            const qRH = await pool.request().query("SELECT TOP 1 NombreTitular, ApePatTitular, ApeMatTitular FROM RH");
+            let nomRH = qRH.recordset.length ? `${qRH.recordset[0].NombreTitular} ${qRH.recordset[0].ApePatTitular} ${qRH.recordset[0].ApeMatTitular}`.toUpperCase() : "JEFA RH";
+            await llenarLaboral(form, data, nomRH);
         }
-
-        // CASO C: Tutoría
+        // 3. CVU (Con Plantilla)
+        else if (tipoDocumento.includes('CVU')) {
+            if(!fileBytes) throw new Error("Falta plantilla CVU");
+            pdfDoc = await PDFDocument.load(fileBytes);
+            form = pdfDoc.getForm();
+            await llenarCVU(form, data, "");
+        }
+        // 4. TUTORÍA (Con Plantilla)
         else if (tipoDocumento.includes('Tutoría')) {
-            if(!fileBytes) return res.status(500).send("Falta plantilla PDF Tutoría.");
+            if(!fileBytes) throw new Error("Falta plantilla Tutoría");
             pdfDoc = await PDFDocument.load(fileBytes);
             form = pdfDoc.getForm();
             await llenarTutoria(form, data, pool);
         }
-
-        // CASO D: Estrategias (Multipágina)
+        // 5. ESTRATEGIAS (Híbrido: Usa plantilla base y clona páginas)
         else if (tipoDocumento.includes('Estrategias')) {
-            if(!fileBytes) return res.status(500).send("Falta plantilla PDF Estrategias.");
+            if(!fileBytes) throw new Error("Falta plantilla Estrategias");
             pdfDoc = await llenarEstrategias(fileBytes, data);
         } 
-
-        // CASO E: Recurso Digital (Multipágina)
+        // 6. RECURSO DIGITAL (Híbrido)
         else if (tipoDocumento.includes('Recurso') || tipoDocumento.includes('Digital')) {
-            if(!fileBytes) return res.status(500).send("Falta plantilla PDF Recurso.");
+            if(!fileBytes) throw new Error("Falta plantilla Recurso");
             pdfDoc = await llenarRecurso(fileBytes, data);
         }
-
-        // CASO F: Créditos Complementarios (GENERADO DESDE CERO)
-        else if (tipoDocumento.includes('Créditos') || tipoDocumento.includes('Monitor')) {
-            pdfDoc = await llenarCreditos(null, data, pool);
-        }
-
-        // CASO G: Exención de Examen (GENERADO DESDE CERO)
-        else if (tipoDocumento.includes('Exención') || tipoDocumento.includes('Examen')) {
-            pdfDoc = await llenarExencion(null, data, pool);
-        }
-
-        else if (tipoDocumento.includes('Servicios') || tipoDocumento.includes('Escolares') || tipoDocumento.includes('07')) {
-    // Generado desde cero, no necesita plantilla base
-    pdfDoc = await llenarServicios(null, data, pool);
-}
-
-else if (tipoDocumento.includes('Acreditación') || tipoDocumento.includes('CONAIC')) {
-            // No nos importa si fileBytes es null, porque este crea su propio PDF
-            pdfDoc = await llenarAcreditacion(null, data, pool);
-        } // CASO J: Carga Académica (Horario)
-else if (tipoDocumento.includes('Carga') || tipoDocumento.includes('Horario')) {
-    pdfDoc = await llenarCargaAcademica(null, data, pool);
-}
-
-        // FALLBACK: Cargar solo el PDF base si no hay lógica especial
+        // 7. DOCUMENTOS DESDE CERO (Nuevos)
+        else if (tipoDocumento.includes('Créditos')) pdfDoc = await llenarCreditos(null, data, pool);
+        else if (tipoDocumento.includes('Exención')) pdfDoc = await llenarExencion(null, data, pool);
+        else if (tipoDocumento.includes('Servicios')) pdfDoc = await llenarServicios(null, data, pool);
+        else if (tipoDocumento.includes('Carga')) pdfDoc = await llenarCargaAcademica(null, data, pool);
+        else if (tipoDocumento.includes('Acreditación')) pdfDoc = await llenarAcreditacion(null, data, pool);
+        
         else {
-            if(!fileBytes) return res.status(500).send("No hay plantilla ni generador para este documento.");
+            if(!fileBytes) return res.status(500).send("Sin generador ni plantilla.");
             pdfDoc = await PDFDocument.load(fileBytes);
         }
 
-        
-
-        // ----------------------------------------------------------
-        // 4. ESTAMPADO DE FIRMAS DIGITALES
-        // ----------------------------------------------------------
+        // FIRMAS (Igual que siempre, con la excepción de Exclusividad)
         if (idSolicitud && idSolicitud !== '0') {
-            const resFirma = await pool.request().input('docId', idSolicitud).query("SELECT FirmaImagen, TipoFirmante FROM Firma WHERE DocumentoID = @docId ORDER BY FechaFirma ASC");
-            
-            if (resFirma.recordset.length > 0) {
+            const resF = await pool.request().input('id', idSolicitud).query("SELECT FirmaImagen, TipoFirmante FROM Firma WHERE DocumentoID=@id ORDER BY FechaFirma ASC");
+            if(resF.recordset.length) {
                 const pages = pdfDoc.getPages();
-                
-                // Recorremos TODAS las páginas (importante para reportes largos)
-                for (const page of pages) {
-                    for (const f of resFirma.recordset) {
-                        if (f.FirmaImagen) {
+                for(const p of pages) {
+                    for(const f of resF.recordset) {
+                        if(f.FirmaImagen) {
                             try {
-                                const pngImage = await pdfDoc.embedPng(f.FirmaImagen);
-                                const dims = pngImage.scaleToFit(130, 50); // Tamaño estándar firma
-
-                                let x = 0, y = 0;
-
-                                // --- CONFIGURACIÓN DE COORDENADAS ---
+                                const img = await pdfDoc.embedPng(f.FirmaImagen);
+                                const dims = img.scaleToFit(130,50);
+                                let x=0, y=0;
                                 
-                                // 1. ESTRATEGIAS / RECURSO (3 Columnas)
-                                if (tipoDocumento.includes('Estrategias') || tipoDocumento.includes('Recurso') || tipoDocumento.includes('Digital')) {
-                                    if (f.TipoFirmante === 'JefaDepartamento') { x = 260; y = 330; }
-                                    else if (f.TipoFirmante === 'PresidenteAcademia') { x = 140; y = 260; }
-                                    else if (f.TipoFirmante === 'Subdireccion') { x = 420; y = 255; }
+                                if(tipoDocumento.includes('Exclusividad') || nombreDocumento.includes('Cédula') ) continue; // Ya firmada por el generador
+                                else if(tipoDocumento.includes('Estrategias') || tipoDocumento.includes('Recurso')) {
+                                    if(f.TipoFirmante.includes('Jefa')) x=260, y=330;
+                                    else if(f.TipoFirmante.includes('Presidente')) x=140, y=260;
+                                    else x=420, y=255;
                                 }
-                                // 2. TUTORÍA (2 Columnas)
-                                else if (tipoDocumento.includes('Tutoría')) {
-                                    if (f.TipoFirmante === 'DesarrolloAcademico') { x = 80; y = 260; }
-                                    else if (f.TipoFirmante === 'Subdireccion') { x = 405; y = 260; }
+                                else if(tipoDocumento.includes('Tutoría')) {
+                                    // Coordenadas para plantilla de Tutoría
+                                    if(f.TipoFirmante.includes('Desarrollo')) x=80, y=260; else x=405, y=260;
                                 }
-                                // 3. CRÉDITOS (2 Columnas)
-                                else if (tipoDocumento.includes('Créditos')) {
-                                    if (f.TipoFirmante === 'ResponsableArea') { x = 100; y = 210; } // Izq
-                                    else if (f.TipoFirmante === 'Subdireccion') { x = 400; y = 210; } // Der
+                                else if(tipoDocumento.includes('Carga')) {
+                                    if(f.TipoFirmante.includes('Jefa')) x=60, y=120; else x=370, y=120;
                                 }
-                                // 4. EXENCIÓN DE EXAMEN (Triángulo: Presidente arriba, otros abajo)
-                                else if (tipoDocumento.includes('Exención') || tipoDocumento.includes('Examen')) {
-                                    // Coordenadas ajustadas para tamaño Oficio
-                                    // Nota: Asumimos roles genéricos o verificamos ID en lógica compleja.
-                                    // Aquí simplificamos por TipoFirmante o posición.
-                                    
-                                    if (f.TipoFirmante === 'Docente') {
-                                        // Es difícil saber cual docente es cual solo con el rol 'Docente'.
-                                        // Lo ideal sería guardar el Rol específico (Presidente/Secretario) en la tabla Firma.
-                                        // Por ahora, usaremos una lógica simple de "primero que llega":
-                                        // (Esto es una aproximación, ajusta si guardas el rol exacto en BD)
-                                        x = 260; y = 420; // Default al centro
-                                    } 
-                                    else if (f.TipoFirmante === 'PresidenteAcademia') { x = 260; y = 420; }
-                                }
-                                // 5. LABORAL / CVU (1 Columna Central)
-                                else {
-                                    x = 100; y = 280; 
-                                }
+                                else x=100, y=280; // Default Laboral/CVU
 
-                                // Estampar si hay coordenadas
-                                if (x > 0) {
-                                    const xCentrado = x + (100 - dims.width) / 2;
-                                    page.drawImage(pngImage, {
-                                        x: xCentrado,
-                                        y: y,
-                                        width: dims.width,
-                                        height: dims.height
-                                    });
-                                }
-
-                            } catch (e) { console.error("❌ Error firma:", e.message); }
+                                if(x>0) p.drawImage(img, { x, y, width:dims.width, height:dims.height });
+                            } catch(e){}
                         }
                     }
                 }
             }
         }
 
-        // Aplanar formulario para evitar edición posterior (si existe form)
-        try { if (pdfDoc.getForm()) pdfDoc.getForm().flatten(); } catch (e) {}
-
-        const pdfBytesFinal = await pdfDoc.save();
+        try { if(form) form.flatten(); } catch(e){}
+        const b = await pdfDoc.save();
         res.setHeader('Content-Type', 'application/pdf');
-        res.send(Buffer.from(pdfBytesFinal));
+        res.send(Buffer.from(b));
 
-    } catch (err) { 
-        console.error("ERROR GENERACIÓN:", err); 
-        res.status(500).send("Error interno: " + err.message); 
-    }
+    } catch (e) { console.error(e); res.status(500).send(e.message); }
+});
+
+// SOLICITAR DOCUMENTO (Con Auto-Firma Exclusividad)
+app.post('/api/solicitar-documento', async (req, res) => {
+    const { idDocente, nombreDocumento } = req.body;
+    try {
+        const pool = await poolPromise;
+        let exp = await pool.request().input('id', idDocente).query("SELECT ExpedienteID FROM Expediente WHERE DocenteID = @id");
+        let expedienteID = (exp.recordset.length > 0) ? exp.recordset[0].ExpedienteID : (await pool.request().input('id', idDocente).query("INSERT INTO Expediente (StatusExp, DocenteID, FechaReg) OUTPUT INSERTED.ExpedienteID VALUES ('Activo', @id, GETDATE())")).recordset[0].ExpedienteID;
+
+        const existe = await pool.request().input('exp', expedienteID).input('tipo', nombreDocumento).query("SELECT Count(*) as c FROM Documentos WHERE ExpedienteID = @exp AND TipoDoc = @tipo AND StatusDoc = 'Pendiente'");
+        if (existe.recordset[0].c > 0) return res.status(400).json({ success: false, message: "Solicitud pendiente." });
+
+        const fechaCuliacan = new Date(new Date().toLocaleString("en-US", {timeZone: "America/Mazatlan"}));
+
+        if (nombreDocumento.includes('Exclusividad')) {
+            const qFirma = await pool.request().input('id', idDocente).query("SELECT FirmaDigital FROM Docente WHERE DocenteID = @id");
+            if (!qFirma.recordset[0]?.FirmaDigital) return res.status(400).json({ success: false, message: "FIRMA DIGITAL REQUERIDA" });
+            
+            const qDoc = await pool.request().input('tipo', nombreDocumento).input('fecha', fechaCuliacan).input('status', 'Completado').input('expId', expedienteID).query("INSERT INTO Documentos (TipoDoc, FechaDoc, StatusDoc, ExpedienteID) OUTPUT INSERTED.DocumentoID VALUES (@tipo, @fecha, @status, @expId)");
+            await pool.request().input('fecha', fechaCuliacan).input('docId', qDoc.recordset[0].DocumentoID).input('tipo', 'Docente').input('firmanteId', idDocente).input('imagen', qFirma.recordset[0].FirmaDigital).query("INSERT INTO Firma VALUES (@fecha, @docId, @tipo, @firmanteId, @imagen)");
+            return res.json({ success: true, message: "Documento generado y firmado." });
+        }
+
+        const rutaInfo = await pool.request().input('nombre', nombreDocumento).query("SELECT TOP 1 R.RolResponsable FROM RutaFirma R INNER JOIN TiposDocumento T ON R.TipoID = T.TipoID WHERE T.NombreVisible = @nombre AND R.Orden = 1");
+        let rol = (rutaInfo.recordset.length > 0) ? rutaInfo.recordset[0].RolResponsable : 'Direccion';
+        await pool.request().input('tipo', nombreDocumento).input('fecha', fechaCuliacan).input('status', 'Pendiente').input('expId', expedienteID).input('rol', rol).query("INSERT INTO Documentos (TipoDoc, FechaDoc, StatusDoc, ExpedienteID, RolFirmanteActual) VALUES (@tipo, @fecha, @status, @expId, @rol)");
+        res.json({ success: true, message: `Enviado a: ${rol}` });
+
+    } catch (e) { res.status(500).json({ success: false, message: e.message }); }
 });
 
 // ==================================================================
@@ -511,15 +557,31 @@ else if (tipoDocumento.includes('Carga') || tipoDocumento.includes('Horario')) {
 // ==================================================================
 app.post('/api/guardar-firma-perfil', async (req, res) => {
     const { idUsuario, rol, firmaBase64 } = req.body;
-    const tablaMap = { 'Direccion': {table:'Direccion', idCol:'DirectorID'}, 'RH': {table:'RH', idCol:'RHID'}, 'Subdireccion': {table:'Subdireccion', idCol:'SubdireccionID'}, 'ServiciosEscolares': {table:'ServiciosEscolares', idCol:'ServEscID'}, 'JefaDepartamento': {table:'JefaDepartamento', idCol:'JefaDepartamentoID'}, 'DesarrolloAcademico': {table:'DesarrolloAcademico', idCol:'DesaAcadID'}, 'PresidenteAcademia': {table:'PresidenteAcademia', idCol:'PresidenteID'}, 'ResponsableArea': {table:'ResponsableArea', idCol:'ResponsableID'} };
-    const configTabla = tablaMap[rol];
-    if (!configTabla) return res.status(400).json({ success: false, message: "Rol inválido." });
+    
+    // Mapeo de roles a tablas
+    const tablaMap = { 
+        'Direccion': {table:'Direccion', idCol:'DirectorID'}, 
+        'RH': {table:'RH', idCol:'RHID'}, 
+        'Subdireccion': {table:'Subdireccion', idCol:'SubdireccionID'}, 
+        'ServiciosEscolares': {table:'ServiciosEscolares', idCol:'ServEscID'}, 
+        'JefaDepartamento': {table:'JefaDepartamento', idCol:'JefaDepartamentoID'}, 
+        'DesarrolloAcademico': {table:'DesarrolloAcademico', idCol:'DesaAcadID'}, 
+        'PresidenteAcademia': {table:'PresidenteAcademia', idCol:'PresidenteID'}, 
+        'ResponsableArea': {table:'ResponsableArea', idCol:'ResponsableID'},
+        'Docente': {table:'Docente', idCol:'DocenteID'} // ¡NUEVO! Agregamos soporte para Docentes
+    };
+
+    // Si el rol es nulo o indefinido, asumimos que es 'Docente' (para mayor seguridad)
+    const rolNormalizado = rol || 'Docente';
+    const configTabla = tablaMap[rolNormalizado];
+
+    if (!configTabla) return res.status(400).json({ success: false, message: "Rol inválido para guardar firma." });
 
     try {
         const pool = await poolPromise;
         await pool.request().input('firma', sql.NVarChar(sql.MAX), firmaBase64).input('id', sql.Int, idUsuario).query(`UPDATE ${configTabla.table} SET FirmaDigital = @firma WHERE ${configTabla.idCol} = @id`);
-        res.json({ success: true, message: "Firma guardada." });
-    } catch (err) { res.status(500).json({ success: false, message: "Error BD." }); }
+        res.json({ success: true, message: "Firma guardada correctamente." });
+    } catch (err) { res.status(500).json({ success: false, message: "Error BD: " + err.message }); }
 });
 
 // ==================================================================
