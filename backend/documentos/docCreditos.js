@@ -24,6 +24,8 @@ function obtenerFechaCorta() {
 async function llenarCreditos(pdfBytesIgnorado, usuarioData, pool) {
     console.log("📄 Generando Constancia de Créditos (Formato Estricto)...");
 
+    const TARGET_YEAR = 2024;
+
     // 1. CREAR DOCUMENTO
     const pdfDoc = await PDFDocument.create();
     const page = pdfDoc.addPage([612, 792]); // Carta Vertical
@@ -43,15 +45,21 @@ async function llenarCreditos(pdfBytesIgnorado, usuarioData, pool) {
         INNER JOIN PeriodoEscolar P ON A.PeriodoID = P.PeriodoID
         INNER JOIN ResponsableArea Resp ON Ar.AreaID = Resp.AreaID
         WHERE A.DocenteID = @idDocente 
+        AND P.NombrePeriodo LIKE '%' + @anio + '%'
         ORDER BY P.FechaFinPer DESC
     `;
     
-    const result = await pool.request().input('idDocente', sql.Int, usuarioData.DocenteID).query(queryActividad);
+    const result = await pool.request()
+        .input('idDocente', sql.Int, usuarioData.DocenteID)
+        .input('anio', sql.VarChar, TARGET_YEAR.toString())
+        .query(queryActividad);
     
-    // Datos por defecto para evitar errores si no hay registros
+    // Si no hay actividad en 2024, mostramos aviso en el PDF
     const act = result.recordset.length > 0 ? result.recordset[0] : {
-        ActAdmPuesto: "ACTIVIDAD NO REGISTRADA",
-        NumDict: "S/N", NumAlum: 0, NumAcred: 0, NombreArea: "ÁREA NO ASIGNADA", NombrePeriodo: "PERIODO ACTUAL", NombreResponsable: "RESPONSABLE DE ÁREA"
+        ActAdmPuesto: "SIN ACTIVIDAD EN 2024",
+        NumDict: "---", NumAlum: 0, NumAcred: 0, 
+        NombreArea: "ÁREA NO ASIGNADA", NombrePeriodo: `AÑO ${TARGET_YEAR}`, 
+        NombreResponsable: "RESPONSABLE DE ÁREA"
     };
 
     // 4. LOGOS (Intenta cargar los oficiales, si no, usa el genérico)

@@ -1,95 +1,99 @@
 // Archivo: backend/documentos/docEstrategias.js
-const { sql, poolPromise } = require('../db');
+const { sql } = require('../db');
 const { PDFDocument } = require('pdf-lib');
 
 function obtenerFechaTexto() {
     const meses = ["enero", "febrero", "marzo", "abril", "mayo", "junio", "julio", "agosto", "septiembre", "octubre", "noviembre", "diciembre"];
     const d = new Date();
-    // Formato: 13/junio/2025
     return `${d.getDate()}/${meses[d.getMonth()]}/${d.getFullYear()}`;
 }
 
 async function llenarEstrategias(fileBytes, data) {
-    console.log("📄 Generando Constancias de Estrategias (Filtro Estricto por Materia)...");
+    console.log("📄 Generando Estrategias (Aplanado Correcto)...");
 
     try {
+        const { poolPromise } = require('../db'); 
         const pool = await poolPromise;
 
-        // 1. OBTENER DATOS CRUDOS DE LA BD
-        // Quitamos DISTINCT aquí para ver todo y filtramos en JS que es más seguro
+        // 1. CONSULTA DE MATERIAS
         const queryMaterias = `
-            SELECT M.NombreMateria, M.Estrategia, M.Prog 
-            FROM Grupo G 
-            INNER JOIN GrupoMateria GM ON G.GrupoID = GM.GrupoID 
-            INNER JOIN Materia M ON GM.MateriaID = M.MateriaID 
-            WHERE G.DocenteID = @id
+           SELECT M.NombreMateria, M.Estrategia, M.Prog 
+           FROM Grupo G 
+           JOIN GrupoMateria GM ON G.GrupoID = GM.GrupoID
+           JOIN Materia M ON GM.MateriaID = M.MateriaID
+           JOIN PeriodoEscolar P ON M.PeriodoID = P.PeriodoID
+           WHERE G.DocenteID = @idDocente AND P.NombrePeriodo LIKE '%2024%'
         `;
         
-        const resMaterias = await pool.request().input('id', sql.Int, data.DocenteID).query(queryMaterias);
+        const resMaterias = await pool.request()
+            .input('idDocente', sql.Int, data.DocenteID)
+            .query(queryMaterias);
+            
         const filasCrudas = resMaterias.recordset;
 
-        if (filasCrudas.length === 0) {
-            console.log("⚠️ El docente no tiene materias asignadas.");
-            const pdfDoc = await PDFDocument.load(fileBytes);
-            return pdfDoc; 
-        }
-
-        // --- FILTRADO INTELIGENTE (ELIMINAR DUPLICADOS REALES) ---
+        // Filtro de duplicados
         const materiasUnicas = [];
         const yaProcesadas = new Set();
-
         filasCrudas.forEach(fila => {
-            // Creamos una "huella digital" única para la materia (quitando espacios y mayúsculas)
-            // Solo nos importa el Nombre de la Materia para distinguir
             const huella = fila.NombreMateria.trim().toUpperCase();
-
             if (!yaProcesadas.has(huella)) {
-                materiasUnicas.push(fila); // Agregamos a la lista limpia
-                yaProcesadas.add(huella);  // Marcamos como procesada
+                materiasUnicas.push(fila);
+                yaProcesadas.add(huella);
             }
         });
 
-        console.log(`📊 Grupos encontrados: ${filasCrudas.length} | Materias Únicas: ${materiasUnicas.length}`);
-
-        // 2. CREAR DOCUMENTO MAESTRO
+        // 2. GENERACIÓN DEL PDF MAESTRO
         const pdfMaestro = await PDFDocument.create();
-
-        // 3. OBTENER DATOS DE JEFES
         const fechaTxt = obtenerFechaTexto();
-        const nombreCompleto = `${data.NombreDocente} ${data.DocenteApePat} ${data.DocenteApeMat}`.toUpperCase();
-        
-        let nombreJefe = "", nombrePres = "", nombreSub = "";
-        
-        const qJefa = await pool.request().input('d', data.DepartamentoID).query("SELECT TOP 1 * FROM JefaDepartamento WHERE DepartamentoID = @d");
-        if(qJefa.recordset.length) { const j = qJefa.recordset[0]; nombreJefe = `${j.NombreTitular} ${j.ApePatTitular} ${j.ApeMatTitular}`.toUpperCase(); }
+        const nombreCompleto = `${data.NombreDocente} ${data.DocenteApePat} ${data.DocenteApeMat || ''}`.toUpperCase();
 
-        const qPres = await pool.request().input('d', data.DepartamentoID).query("SELECT TOP 1 * FROM PresidenteAcademia WHERE DepartamentoID = @d");
-        if(qPres.recordset.length) { const p = qPres.recordset[0]; nombrePres = `${p.PresidenteNombre} ${p.PresidenteApePat} ${p.PresidenteApeMat}`.toUpperCase(); }
+        // CASO A: SI NO HAY MATERIAS (HOJA EN BLANCO LIMPIA)
+        if (materiasUnicas.length === 0) {
+            console.log("⚠️ Sin materias. Generando hoja vacía limpia.");
+            const pdfTemp = await PDFDocument.load(fileBytes);
+            const formTemp = pdfTemp.getForm();
+            
+            // Llenamos solo encabezados para que no se vea todo vacío
+            try {
+                const fFecha = formTemp.getTextField('Fecha'); if(fFecha) fFecha.setText(fechaTxt);
+                const fNombre = formTemp.getTextField('NombreDocente'); if(fNombre) fNombre.setText(nombreCompleto);
+                
+                // Limpiamos los campos de tabla explícitamente con texto vacío
+                const camposTabla = ['Asignatura1', 'Estrategia1', 'Programa1'];
+                camposTabla.forEach(c => { const f = formTemp.getTextField(c); if(f) f.setText(''); });
 
-        const qSub = await pool.request().query("SELECT TOP 1 * FROM Subdireccion");
-        if(qSub.recordset.length) { const s = qSub.recordset[0]; nombreSub = `${s.NombreTitular} ${s.ApePatTitular} ${s.ApeMatTitular}`.toUpperCase(); }
+            } catch(e) {}
 
-        // 4. GENERAR PDF (Usando la lista limpia 'materiasUnicas')
+            formTemp.flatten(); // <--- CLAVE: Aplanar aquí para quitar los cuadros azules
+            const [pagina] = await pdfMaestro.copyPages(pdfTemp, [0]);
+            pdfMaestro.addPage(pagina);
+            return pdfMaestro;
+        }
+
+        // CASO B: CON MATERIAS (UNA PÁGINA POR MATERIA)
         for (const materia of materiasUnicas) {
+            // Cargar plantilla fresca en cada vuelta
             const pdfTemp = await PDFDocument.load(fileBytes);
             const formTemp = pdfTemp.getForm();
 
             const llenar = (id, val) => {
-                try { const c = formTemp.getTextField(id); if(c) c.setText(String(val).trim()); } catch(e){}
+                try { 
+                    const c = formTemp.getTextField(id); 
+                    if(c) c.setText(String(val).trim()); 
+                } catch(e){}
             };
 
+            // Llenar campos
             llenar('Fecha', fechaTxt);
             llenar('NombreDocente', nombreCompleto);
-            llenar('NombreJefe', nombreJefe);
-            llenar('NombrePresidente', nombrePres);
-            llenar('NombreSubdirector', nombreSub);
-
             llenar('Asignatura1', materia.NombreMateria);
             llenar('Estrategia1', materia.Estrategia || 'Aprendizaje Basado en Proyectos');
             llenar('Programa1', materia.Prog);
+            
+            // EL SECRETO: Aplanar ANTES de copiar
+            formTemp.flatten(); 
 
-            formTemp.flatten();
-
+            // Ahora copiamos la página ya "planchada" (sin campos editables)
             const [paginaCopiada] = await pdfMaestro.copyPages(pdfTemp, [0]);
             pdfMaestro.addPage(paginaCopiada);
         }
@@ -97,8 +101,8 @@ async function llenarEstrategias(fileBytes, data) {
         return pdfMaestro;
 
     } catch (error) {
-        console.error("❌ Error en estrategias:", error);
-        return null;
+        console.error("❌ Error en docEstrategias:", error);
+        throw error;
     }
 }
 
