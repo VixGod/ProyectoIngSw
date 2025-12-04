@@ -152,9 +152,14 @@ app.get('/api/catalogo-inteligente', async (req, res) => {
         const tieneTutorias = resTut.recordset[0].C > 0;
 
         // C. CRÉDITOS / ACTIVIDAD ADMINISTRATIVA (Existencia en 2024)
-        const qCred = `SELECT COUNT(*) as C FROM ActividadAdministrativa A JOIN PeriodoEscolar P ON A.PeriodoID=P.PeriodoID WHERE A.DocenteID=@id AND P.NombrePeriodo LIKE '%`+ANIO_EVALUAR+`%'`;
+const qCred = `
+            SELECT ISNULL(SUM(NumAlum), 0) as TotalAlumnos 
+            FROM ActividadAdministrativa A 
+            JOIN PeriodoEscolar P ON A.PeriodoID = P.PeriodoID 
+            WHERE A.DocenteID = @id AND P.NombrePeriodo LIKE '%` + ANIO_EVALUAR + `%'
+        `;
         const resCred = await pool.request().input('id', sql.Int, idDocente).query(qCred);
-        const tieneCreditos = resCred.recordset[0].C > 0;
+        const totalAlumnosCreditos = resCred.recordset[0].TotalAlumnos;
 
         // D. REGLAS DE PERFIL
         const anioActual = new Date().getFullYear();
@@ -205,7 +210,10 @@ app.get('/api/catalogo-inteligente', async (req, res) => {
 
                 // Créditos (Monitor)
                 else if (nombre.includes('CRÉDITOS') || nombre.includes('MONITOR')) {
-                    if (!tieneCreditos) motivoBloqueo = `Sin actividad administrativa registrada en ${ANIO_EVALUAR}.`;
+                    // CORRECCIÓN: Si el total de alumnos es 0, bloqueamos aunque exista la actividad.
+                    if (totalAlumnosCreditos === 0) {
+                        motivoBloqueo = `Actividad registrada sin alumnos (0) en ${ANIO_EVALUAR}.`;
+                    }
                 }
 
                 // Servicios Escolares
@@ -486,28 +494,51 @@ else if (tipoDocumento.includes('Cédula')) {
                 for(const p of pages) {
                     for(const f of resF.recordset) {
                         if(f.FirmaImagen) {
-                            try {
-                                const img = await pdfDoc.embedPng(f.FirmaImagen);
-                                const dims = img.scaleToFit(130,50);
-                                let x=0, y=0;
-                                
-                                if(tipoDocumento.includes('Exclusividad') || nombreDocumento.includes('Cédula') ) continue; // Ya firmada por el generador
-                                else if(tipoDocumento.includes('Estrategias') || tipoDocumento.includes('Recurso')) {
-                                    if(f.TipoFirmante.includes('Jefa')) x=260, y=330;
-                                    else if(f.TipoFirmante.includes('Presidente')) x=140, y=260;
-                                    else x=420, y=255;
-                                }
-                                else if(tipoDocumento.includes('Tutoría')) {
-                                    // Coordenadas para plantilla de Tutoría
-                                    if(f.TipoFirmante.includes('Desarrollo')) x=80, y=260; else x=405, y=260;
-                                }
-                                else if(tipoDocumento.includes('Carga')) {
-                                    if(f.TipoFirmante.includes('Jefa')) x=60, y=120; else x=370, y=120;
-                                }
-                                else x=100, y=280; // Default Laboral/CVU
+try {
+    let img;
+    // 1. DETECCIÓN INTELIGENTE (Soporte para JPG y PNG)
+    if (f.FirmaImagen.startsWith('data:image/jpeg') || f.FirmaImagen.startsWith('data:image/jpg')) {
+        img = await pdfDoc.embedJpg(f.FirmaImagen);
+    } else {
+        img = await pdfDoc.embedPng(f.FirmaImagen);
+    }
 
-                                if(x>0) p.drawImage(img, { x, y, width:dims.width, height:dims.height });
-                            } catch(e){}
+    const dims = img.scaleToFit(130, 50);
+    let x = 0, y = 0;
+
+    // 2. EXCEPCIONES (Documentos que no llevan firma estampada aquí)
+    // Corregí 'nombreDocumento' por 'tipoDocumento'
+    if (tipoDocumento.includes('Exclusividad') || tipoDocumento.includes('Cédula') || tipoDocumento.includes('Exención')) {
+        continue; 
+    } 
+    // 3. COORDENADAS
+    else if (tipoDocumento.includes('Estrategias') || tipoDocumento.includes('Recurso')) {
+        if (f.TipoFirmante.includes('Jefa')) { x = 260; y = 330; }
+        else if (f.TipoFirmante.includes('Presidente')) { x = 140; y = 260; }
+        else { x = 420; y = 255; }
+    } 
+    else if (tipoDocumento.includes('Tutoría')) {
+        if (f.TipoFirmante.includes('Desarrollo')) { x = 80; y = 260; } 
+        else { x = 405; y = 260; }
+    } 
+    else if (tipoDocumento.includes('Carga')) {
+        if (f.TipoFirmante.includes('Jefa')) { x = 60; y = 120; } 
+        else { x = 400; y = 120; }
+    }
+    else if (tipoDocumento.includes('Créditos')) {
+            if (f.TipoFirmante.includes('Responsable')) { x = 100; y = 150; } 
+            else { x = 400; y = 150; }
+    }else if (tipoDocumento.includes('Servicios')) {  x = 240;   y = 100; }
+    else {
+        // Laboral y CVU
+        x = 100; y = 280; 
+    }
+
+    if (x > 0) p.drawImage(img, { x, y, width: dims.width, height: dims.height });
+
+} catch (e) {
+    console.error(`Error firma en ${tipoDocumento}:`, e.message);
+}
                         }
                     }
                 }
