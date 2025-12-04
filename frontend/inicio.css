@@ -251,6 +251,27 @@ body {
     background: rgba(27, 57, 106, 0.1); 
     padding: 20px;
     border-radius: 5px;
+    
+    /* --- NUEVO: SCROLL AUTOMÁTICO --- */
+    max-height: 600px; /* Define una altura máxima fija (ajusta según tu gusto) */
+    overflow-y: auto;  /* Activa la barra vertical solo si se pasa de esa altura */
+    
+    /* Opcional: Para que la barra se vea más bonita (Estilo Webkit) */
+    scrollbar-width: thin; 
+    scrollbar-color: #1B396A #f0f0f0;
+}
+
+/* Opcional: Estilo personalizado para la barra de scroll en Chrome/Edge */
+.document-list-container::-webkit-scrollbar {
+    width: 8px;
+}
+.document-list-container::-webkit-scrollbar-track {
+    background: #f0f0f0;
+    border-radius: 4px;
+}
+.document-list-container::-webkit-scrollbar-thumb {
+    background-color: #1B396A;
+    border-radius: 4px;
 }
 
 .document-row {
